@@ -1,6 +1,6 @@
 :root {
-  --font-geist-sans: "Roboto", "Segoe UI", Helvetica, Arial, sans-serif;
-  --font-geist-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --font-geist-sans: Arial, Helvetica, sans-serif;
+  --font-geist-mono: Arial, Helvetica, sans-serif;
   --ink: #0b0e0d;
   --ink-2: #101412;
   --panel: #151a17;

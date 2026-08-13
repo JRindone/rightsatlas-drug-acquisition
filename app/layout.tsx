@@ -1,9 +1,5 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
-import "@fontsource/roboto/latin-400.css";
-import "@fontsource/roboto/latin-500.css";
-import "@fontsource/roboto/latin-600.css";
-import "@fontsource/roboto/latin-700.css";
 import "./globals.css";
 
 export async function generateMetadata(): Promise<Metadata> {
