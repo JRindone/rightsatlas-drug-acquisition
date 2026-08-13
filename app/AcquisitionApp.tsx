@@ -142,6 +142,18 @@ function callPointChips(value: string) {
     .slice(0, 6);
 }
 
+function drugTypeFor(target: Target, catalog: Catalog) {
+  const product = catalog.universe.find((item) => item.strategyAsset === target.asset);
+  const classification = `${product?.productType ?? ""} ${product?.modality ?? ""}`.toLowerCase();
+  const ingredient = target.ingredient.toLowerCase();
+
+  if (classification.includes("vaccine")) return "Vaccine";
+  if (classification.includes("cell") || classification.includes("gene therap")) return "Cell / gene therapy";
+  if (classification.includes("biologic") || classification.includes("monoclonal") || classification.includes("blood-") || classification.includes("plasma-")) return "Biologic";
+  if (classification.includes("peptide") || classification.includes("protein") || classification.includes("hormone") || classification.includes("enzyme") || ingredient === "glucagon") return "Peptide / protein";
+  return "Small molecule";
+}
+
 function SearchIcon() {
   return (
     <svg aria-hidden="true" viewBox="0 0 24 24">
@@ -322,6 +334,7 @@ function SituationView({
 
 function TargetCard({
   target,
+  drugType,
   saved,
   compared,
   onOpen,
@@ -329,6 +342,7 @@ function TargetCard({
   onCompare,
 }: {
   target: Target;
+  drugType: string;
   saved: boolean;
   compared: boolean;
   onOpen: () => void;
@@ -363,6 +377,7 @@ function TargetCard({
         </div>
       </div>
       <div className="chip-row product-facts">
+        <span className="chip"><b>Drug type</b>{drugType}</span>
         <span className="chip"><b>MOA</b>{target.mechanism}</span>
         <span className="chip"><b>Route</b>{target.route}</span>
         <span className="chip"><b>Dose</b>{target.dosing}</span>
@@ -378,6 +393,7 @@ function TargetCard({
 }
 
 function TargetsView({
+  catalog,
   targets,
   strategy,
   savedIds,
@@ -386,6 +402,7 @@ function TargetsView({
   onSave,
   onCompare,
 }: {
+  catalog: Catalog;
   targets: Target[];
   strategy: Strategy;
   savedIds: string[];
@@ -429,6 +446,7 @@ function TargetsView({
           <TargetCard
             key={target.id}
             target={target}
+            drugType={drugTypeFor(target, catalog)}
             saved={savedIds.includes(target.id)}
             compared={compareIds.includes(target.id)}
             onOpen={() => onOpen(target.id)}
@@ -495,6 +513,7 @@ function DatabaseView({ catalog, strategyKey, onViewTarget }: { catalog: Catalog
 }
 
 function SavedView({
+  catalog,
   targets,
   savedIds,
   compareIds,
@@ -503,6 +522,7 @@ function SavedView({
   onCompare,
   onBrowse,
 }: {
+  catalog: Catalog;
   targets: Target[];
   savedIds: string[];
   compareIds: string[];
@@ -521,7 +541,7 @@ function SavedView({
       {saved.length ? (
         <section className="target-list">
           {saved.map((target) => (
-            <TargetCard key={target.id} target={target} saved compared={compareIds.includes(target.id)} onOpen={() => onOpen(target.id)} onSave={() => onSave(target.id)} onCompare={() => onCompare(target.id)} />
+            <TargetCard key={target.id} target={target} drugType={drugTypeFor(target, catalog)} saved compared={compareIds.includes(target.id)} onOpen={() => onOpen(target.id)} onSave={() => onSave(target.id)} onCompare={() => onCompare(target.id)} />
           ))}
         </section>
       ) : (
@@ -753,9 +773,9 @@ export function AcquisitionApp() {
 
       <main className="page-shell">
         {view === "situation" && <SituationView catalog={catalog} strategyKey={strategyKey} onStrategyChange={changeStrategy} />}
-        {view === "targets" && <TargetsView targets={targets} strategy={strategy} savedIds={savedIds} compareIds={activeCompareIds} onOpen={setSelectedTargetId} onSave={toggleSaved} onCompare={toggleCompare} />}
+        {view === "targets" && <TargetsView catalog={catalog} targets={targets} strategy={strategy} savedIds={savedIds} compareIds={activeCompareIds} onOpen={setSelectedTargetId} onSave={toggleSaved} onCompare={toggleCompare} />}
         {view === "database" && <DatabaseView catalog={catalog} strategyKey={strategyKey} onViewTarget={viewTarget} />}
-        {view === "saved" && <SavedView targets={targets} savedIds={savedIds} compareIds={activeCompareIds} onOpen={setSelectedTargetId} onSave={toggleSaved} onCompare={toggleCompare} onBrowse={() => changeView("targets")} />}
+        {view === "saved" && <SavedView catalog={catalog} targets={targets} savedIds={savedIds} compareIds={activeCompareIds} onOpen={setSelectedTargetId} onSave={toggleSaved} onCompare={toggleCompare} onBrowse={() => changeView("targets")} />}
       </main>
 
       {activeCompareIds.length > 0 && (

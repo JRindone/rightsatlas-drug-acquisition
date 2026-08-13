@@ -46,6 +46,7 @@ test("keeps the two publishing targets aligned", async () => {
   assert.doesNotMatch(app, /unique priority assets/);
   assert.doesNotMatch(app, /fit score/);
   assert.match(app, /Prescribing info/);
+  assert.match(app, /Drug type/);
   assert.match(catalog, /"strategyRecords":40/);
   assert.match(catalog, /Acquire into today’s call points/);
 });
