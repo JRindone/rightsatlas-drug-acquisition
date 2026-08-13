@@ -1,5 +1,5 @@
 :root {
-  --font-geist-sans: Arial, Helvetica, sans-serif;
+  --font-geist-sans: "Avenir Next", Avenir, "Segoe UI", Helvetica, Arial, sans-serif;
   --font-geist-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   --ink: #0b0e0d;
   --ink-2: #101412;
@@ -35,6 +35,8 @@ body {
   color: var(--text);
   font-family: var(--font-geist-sans), Arial, sans-serif;
   font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.014em;
   line-height: 1.5;
   min-height: 100vh;
 }
@@ -2620,6 +2622,52 @@ main {
   .product-main {
     grid-template-columns: 46px minmax(260px, 1.45fr) minmax(190px, 0.85fr) 150px 60px 24px;
   }
+}
+
+/* Readable, open typography */
+h1,
+h2,
+h3,
+.brand strong,
+.product-title-line strong,
+.target-card-head h2,
+.decision-asset strong,
+.drawer-header h1,
+.detail-section h2,
+.method-panel h2,
+.section-heading h2 {
+  letter-spacing: -0.012em;
+}
+
+.hero-copy h1,
+.priority-hero h1,
+.method-hero h1,
+.drawer-header h1 {
+  letter-spacing: -0.018em;
+}
+
+p,
+li,
+button,
+input,
+select,
+textarea,
+.ingredient,
+.deal-fact strong,
+.target-deal-facts strong,
+.decision-holder strong,
+.drawer-deal-grid strong {
+  letter-spacing: 0.018em;
+}
+
+.desktop-nav button,
+.mobile-nav button,
+.drawer-tabs button,
+.tier-tabs button,
+.query-presets button,
+.filter-chip-grid button,
+.segmented-control button {
+  letter-spacing: 0.025em;
 }
 
 @media (prefers-reduced-motion: reduce) {
