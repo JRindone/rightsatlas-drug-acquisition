@@ -20,8 +20,8 @@ test("server-renders the Cohaddy Bio strategy shell and metadata", async () => {
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
 
   const html = await response.text();
-  assert.match(html, /<title>Cohaddy Bio \| Asset Strategy<\/title>/i);
-  assert.match(html, /two acquisition strategies/i);
+  assert.match(html, /<title>Cohaddy Bio \| Build a Specialty Team<\/title>/i);
+  assert.match(html, /81 specialty candidates/i);
   assert.match(html, /Cohaddy Bio/);
   assert.match(html, /Preparing the strategy room/);
 });
@@ -35,18 +35,22 @@ test("keeps the two publishing targets aligned", async () => {
   ]);
 
   for (const source of [externalHtml, layout]) {
-    assert.match(source, /Cohaddy Bio \| Asset Strategy/);
+    assert.match(source, /Cohaddy Bio \| Build a Specialty Team/);
     assert.match(source, /rights holder, annual sales, call points/i);
   }
-  assert.match(app, /Current platform/);
   assert.match(app, /Option 2 - New specialty platform/);
+  assert.doesNotMatch(app, /Option 1/);
   assert.match(app, /Current situation/);
   assert.match(app, /1,605/);
-  assert.match(app, /Assets were screened as follows/);
+  assert.match(app, /635/);
+  assert.match(app, /81/);
+  assert.match(app, /20/);
+  assert.match(app, /Specialty product database/);
+  assert.match(app, /specialtyDatabase/);
   assert.doesNotMatch(app, /unique priority assets/);
   assert.doesNotMatch(app, /fit score/);
   assert.match(app, /Prescribing info/);
   assert.match(app, /Drug type/);
   assert.match(catalog, /"strategyRecords":40/);
-  assert.match(catalog, /Acquire into today’s call points/);
+  assert.match(catalog, /Build a focused specialty franchise/);
 });

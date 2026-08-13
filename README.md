@@ -1,11 +1,8 @@
-# Cohaddy Bio Asset Strategy
+# Cohaddy Bio Specialty Platform
 
-A mobile-first CEO workspace for evaluating two independent asset-acquisition strategies:
+A mobile-first CEO workspace for Option 2: acquire a differentiated U.S. commercial asset and build a dedicated specialty team around a coherent multi-asset platform.
 
-- Option 1 - Current platform: acquire into Cohaddy Bio's current cardiovascular, psychiatry and primary-care call points.
-- Option 2 - New specialty platform: build a dedicated team around a coherent multi-asset platform.
-
-The app includes 20 ranked targets for each option, 25 unique targets, four illustrative specialty-team models and a searchable 1,605-product universe. Target briefs emphasize strategic fit, rights holder, annual sales, call points, administration, team model and next diligence decisions.
+The funnel screens 1,605 products to 635 mechanism-classified products, 81 specialty candidates and 20 ranked targets. The searchable database is limited to those 81 specialty candidates. Target briefs emphasize strategic fit, rights holder, annual sales, call points, administration, team model and next diligence decisions.
 
 ## Run locally
 

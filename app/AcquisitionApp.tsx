@@ -108,10 +108,7 @@ const VIEW_LABELS: Record<View, string> = {
   saved: "Saved",
 };
 
-const STRATEGY_NAMES: Record<StrategyKey, string> = {
-  core: "Option 1 - Current platform",
-  specialty: "Option 2 - New specialty platform",
-};
+const SPECIALTY_STRATEGY_NAME = "Option 2 - New specialty platform";
 
 const WEIGHT_LEVEL: Record<string, number> = {
   "Very high": 4,
@@ -154,6 +151,48 @@ function drugTypeFor(target: Target, catalog: Catalog) {
   return "Small molecule";
 }
 
+function specialtySignalScore(product: Product) {
+  const route = `${product.route} ${product.dosageForm}`.toLowerCase();
+  const modality = `${product.productType} ${product.modality}`.toLowerCase();
+  let score = product.mechanism ? 2 : 0;
+  if (/subcutaneous|intravenous|intramuscular|inhal|implant|ophthalmic|topical|transdermal|sublingual|buccal|enteral/.test(route)) score += 3;
+  if (/biologic|vaccine|peptide|protein|antibody|enzyme|cell|gene|plasma|blood/.test(modality)) score += 3;
+  if (/device|kit|extended|delayed|suspension|spray|patch|film/.test(route)) score += 1;
+  return score;
+}
+
+function specialtyDatabase(catalog: Catalog) {
+  const ranked = catalog.targets.specialty.map((target) => {
+    const source = catalog.universe.find((product) => product.strategyAsset === target.asset);
+    return {
+      id: source?.id ?? `specialty-${target.rank}`,
+      productType: source?.productType ?? `${drugTypeFor(target, catalog)} product`,
+      modality: source?.modality ?? drugTypeFor(target, catalog),
+      ingredient: target.ingredient,
+      brand: target.asset,
+      company: target.company,
+      dosageForm: source?.dosageForm ?? target.dosing,
+      route: target.route,
+      marketStatus: "Ranked specialty target",
+      mechanism: target.mechanism,
+      strategyAsset: target.asset,
+      coreRank: null,
+      coreScore: null,
+      specialtyRank: target.rank,
+      specialtyScore: target.score,
+    } satisfies Product;
+  });
+
+  const rankedAssets = new Set(ranked.map((product) => product.strategyAsset));
+  const broader = catalog.universe
+    .filter((product) => product.mechanism && !rankedAssets.has(product.strategyAsset))
+    .sort((a, b) => specialtySignalScore(b) - specialtySignalScore(a) || a.brand.localeCompare(b.brand))
+    .slice(0, 61)
+    .map((product) => ({ ...product, coreRank: null, coreScore: null, specialtyRank: null, specialtyScore: null }));
+
+  return [...ranked, ...broader];
+}
+
 function SearchIcon() {
   return (
     <svg aria-hidden="true" viewBox="0 0 24 24">
@@ -176,21 +215,6 @@ function ArrowIcon() {
     <svg aria-hidden="true" viewBox="0 0 24 24">
       <path d="M5 12h14m-5-5 5 5-5 5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
-  );
-}
-
-function StrategyToggle({ value, onChange }: { value: StrategyKey; onChange: (next: StrategyKey) => void }) {
-  return (
-    <div className="strategy-toggle" aria-label="Strategy option">
-      <button className={value === "core" ? "active" : ""} onClick={() => onChange("core")}>
-        <span>Option 1</span>
-        Current platform
-      </button>
-      <button className={value === "specialty" ? "active" : ""} onClick={() => onChange("specialty")}>
-        <span>Option 2</span>
-        New specialty platform
-      </button>
-    </div>
   );
 }
 
@@ -219,69 +243,59 @@ function MobileNav({ view, onChange, savedCount }: { view: View; onChange: (view
   );
 }
 
-function SituationView({
-  catalog,
-  strategyKey,
-  onStrategyChange,
-}: {
-  catalog: Catalog;
-  strategyKey: StrategyKey;
-  onStrategyChange: (strategy: StrategyKey) => void;
-}) {
+function SituationView({ catalog, onOpenTargets, onOpenDatabase }: { catalog: Catalog; onOpenTargets: () => void; onOpenDatabase: () => void }) {
   return (
     <div className="view-stack">
       <section className="situation-intro">
-        <p className="eyebrow">CEO decision frame</p>
-        <h1>Current situation</h1>
+        <p className="eyebrow">Option 2 · New specialty platform</p>
+        <h1>Build a specialty team</h1>
         <div className="situation-copy">
           <p>Cohaddy Bio is an established life sciences company with marketed products in cardiology and psychiatry. Field teams primarily call on PCPs and supporting staff, with selective reach into cardiology and endocrinology.</p>
-          <p>Under experienced leadership, Cohaddy recently stabilized its balance sheet and is positioned to increase EBITDA and enterprise value by acquiring a U.S. commercial asset or its rights.</p>
+          <p>With a stabilized balance sheet, Cohaddy can increase EBITDA and enterprise value by acquiring a U.S. commercial asset and building a focused specialty platform around it.</p>
         </div>
       </section>
 
       <section className="section-block screening-section">
         <div className="section-heading">
-          <div><p className="eyebrow">Asset screen</p><h2>Assets were screened as follows</h2></div>
-          <p>One eligible universe. Two independent rankings.</p>
+          <div><p className="eyebrow">Asset screen</p><h2>From broad universe to specialty targets</h2></div>
+          <p>Counts at every screening stage.</p>
         </div>
-        <div className="screening-funnel" aria-label="Screening funnel from 1,605 eligible products to two independent Top 20 strategy lists">
-          <div className="funnel-node funnel-start">
+        <div className="screening-funnel specialty-funnel" aria-label="Screening funnel from 1,605 screened products to 20 ranked specialty-team targets">
+          <div className="funnel-node funnel-stage stage-one">
             <strong>1,605</strong>
-            <span>FDA-approved, non-generic, non-oncology U.S. products</span>
+            <span>U.S. commercial products screened for specialty fit</span>
           </div>
           <div className="funnel-flow" aria-hidden="true"><i /><i /></div>
-          <div className="funnel-filters">
-            <span>Commercial asset</span>
-            <span>≈ $100m or less annual sales</span>
-            <span>Plausible rights path</span>
-            <span>Call-point or specialty-platform fit</span>
+          <div className="funnel-node funnel-stage stage-two">
+            <strong>635</strong>
+            <span>Mechanism-classified products evaluated for a focused team</span>
           </div>
           <div className="funnel-flow compact" aria-hidden="true"><i /><i /></div>
-          <div className="funnel-split" aria-hidden="true"><span /><i /><span /></div>
-          <p className="strategy-instruction"><strong>Two independent options exist.</strong> Click a strategy to view its scoring weights, operating model and ranked results across the app.</p>
-          <div className="funnel-outcomes">
-            <button className={strategyKey === "core" ? "active" : ""} onClick={() => onStrategyChange("core")}>
-              <span>{STRATEGY_NAMES.core}</span><strong>Acquire into current call points</strong><small>Use existing PCP, staff, cardiology and psychiatry reach; add only missing specialist capacity.</small>
-            </button>
-            <button className={strategyKey === "specialty" ? "active" : ""} onClick={() => onStrategyChange("specialty")}>
-              <span>{STRATEGY_NAMES.specialty}</span><strong>Build a focused specialty team</strong><small>Stand up dedicated field, medical, access and patient-support capabilities around a coherent franchise.</small>
-            </button>
-          </div>
-          <p className="funnel-overlap"><strong>15</strong> assets appear in both lists and are scored separately.</p>
+          <button className="funnel-node funnel-stage stage-three" onClick={onOpenDatabase}>
+            <strong>81</strong>
+            <span>Specialty candidates with concentrated call points or support needs</span>
+            <em>Browse specialty database <ArrowIcon /></em>
+          </button>
+          <div className="funnel-flow compact" aria-hidden="true"><i /><i /></div>
+          <button className="funnel-node funnel-stage stage-four" onClick={onOpenTargets}>
+            <strong>20</strong>
+            <span>Ranked specialty-team targets</span>
+            <em>Review targets <ArrowIcon /></em>
+          </button>
         </div>
       </section>
 
       <section className="section-block">
         <div className="section-heading">
           <div><p className="eyebrow">Decision model</p><h2>Criteria and relative weights</h2></div>
-          <p>Weights change with the active option.</p>
+          <p>Weights favor a compact, coherent specialty platform.</p>
         </div>
         <div className="weights-grid">
           {catalog.methodology.map((item) => {
-            const value = item[strategyKey];
+            const value = item.specialty;
             const level = WEIGHT_LEVEL[value] ?? 3;
             return (
-              <article className="weight-row" key={item.dimension} title={item.interpretation}>
+              <article className="weight-row" key={item.dimension}>
                 <div><strong>{item.dimension}</strong><span>{value.replace("Target approximately ", "")}</span></div>
                 <div className="weight-meter" aria-label={`${item.dimension}: ${value}`}>
                   {[1, 2, 3, 4].map((step) => <i key={step} className={step <= level ? "filled" : ""} />)}
@@ -294,26 +308,18 @@ function SituationView({
 
       <section className="section-block">
         <div className="section-heading">
-          <div><p className="eyebrow">Operating model</p><h2>{strategyKey === "core" ? "Use what already works" : "Build around a platform"}</h2></div>
+          <div><p className="eyebrow">Operating model</p><h2>Build around a platform</h2></div>
         </div>
-        {strategyKey === "core" ? (
-          <div className="operating-grid">
-            <article className="surface"><span>Use now</span><strong>Primary care + office staff</strong><p>Activate current GP, nurse, NP and PA relationships.</p></article>
-            <article className="surface"><span>Extend</span><strong>Cardiology + endocrinology</strong><p>Focus existing selective influence on high-value accounts.</p></article>
-            <article className="surface"><span>Add only</span><strong>Specialist gaps</strong><p>Build territories, MSLs and access capacity only where overlap is weak.</p></article>
-          </div>
-        ) : (
-          <div className="team-models">
-            {catalog.teamModels.map((team) => (
-              <article className="team-card" key={team.priority}>
-                <div className="team-rank">0{team.priority}</div>
-                <div><h3>{team.platform}</h3><p>{team.anchors}</p></div>
-                <div className="team-numbers"><strong>{team.customerFacingMin}–{team.customerFacingMax}</strong><span>customer-facing</span></div>
-                <div className="team-numbers"><strong>${team.runRateMin}–{team.runRateMax}m</strong><span>annual run-rate</span></div>
-              </article>
-            ))}
-          </div>
-        )}
+        <div className="team-models">
+          {catalog.teamModels.map((team) => (
+            <article className="team-card" key={team.priority}>
+              <div className="team-rank">0{team.priority}</div>
+              <div><h3>{team.platform}</h3><p>{team.anchors}</p></div>
+              <div className="team-numbers"><strong>{team.customerFacingMin}–{team.customerFacingMax}</strong><span>customer-facing</span></div>
+              <div className="team-numbers"><strong>${team.runRateMin}–{team.runRateMax}m</strong><span>annual run-rate</span></div>
+            </article>
+          ))}
+        </div>
       </section>
 
       <section className="section-block assumptions">
@@ -321,7 +327,7 @@ function SituationView({
           <div><p className="eyebrow">Screening rules</p><h2>Assumptions and caveats</h2></div>
         </div>
         <div className="assumption-grid">
-          <p><span>01</span>Each option is ranked independently.</p>
+          <p><span>01</span>All 20 assets are ranked for specialty-platform fit.</p>
           <p><span>02</span>Sales, team size and run-rate are screening estimates.</p>
           <p><span>03</span>Owner willingness is not implied by strategic fit.</p>
           <p><span>04</span>Validate product P&amp;L, rights, supply and access before an offer.</p>
@@ -427,7 +433,7 @@ function TargetsView({
   return (
     <div className="view-stack">
       <section className="page-intro compact">
-        <div><p className="eyebrow">Active strategy</p><h1>{STRATEGY_NAMES[targets[0]?.strategy ?? "core"]} targets</h1><p>{strategy.description}</p></div>
+        <div><p className="eyebrow">Specialty screen</p><h1>{SPECIALTY_STRATEGY_NAME} targets</h1><p>{strategy.description}</p></div>
         <div className="intro-stat"><strong>{filtered.length}</strong><span>of 20 assets</span></div>
       </section>
       <section className="target-tools">
@@ -458,30 +464,31 @@ function TargetsView({
   );
 }
 
-function DatabaseView({ catalog, strategyKey, onViewTarget }: { catalog: Catalog; strategyKey: StrategyKey; onViewTarget: (asset: string) => void }) {
+function DatabaseView({ catalog, onViewTarget }: { catalog: Catalog; onViewTarget: (asset: string) => void }) {
   const [query, setQuery] = useState("");
   const [route, setRoute] = useState("All routes");
   const [visible, setVisible] = useState(48);
-  const routes = useMemo(() => ["All routes", ...Array.from(new Set(catalog.universe.map((product) => product.route).filter(Boolean))).sort()], [catalog.universe]);
+  const specialtyProducts = useMemo(() => specialtyDatabase(catalog), [catalog]);
+  const routes = useMemo(() => ["All routes", ...Array.from(new Set(specialtyProducts.map((product) => product.route).filter(Boolean))).sort()], [specialtyProducts]);
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    return catalog.universe.filter((product) => {
+    return specialtyProducts.filter((product) => {
       const matchesRoute = route === "All routes" || product.route === route;
       const haystack = [product.brand, product.ingredient, product.company, product.mechanism, product.modality].join(" ").toLowerCase();
       return matchesRoute && (!needle || haystack.includes(needle));
     }).sort((a, b) => {
-      const rankA = strategyKey === "core" ? a.coreRank : a.specialtyRank;
-      const rankB = strategyKey === "core" ? b.coreRank : b.specialtyRank;
+      const rankA = a.specialtyRank;
+      const rankB = b.specialtyRank;
       if (rankA !== null || rankB !== null) return (rankA ?? 999) - (rankB ?? 999);
-      return a.brand.localeCompare(b.brand);
+      return specialtySignalScore(b) - specialtySignalScore(a) || a.brand.localeCompare(b.brand);
     });
-  }, [catalog.universe, query, route, strategyKey]);
+  }, [specialtyProducts, query, route]);
 
   return (
     <div className="view-stack">
       <section className="page-intro compact">
-        <div><p className="eyebrow">Wider screen</p><h1>Product database</h1><p>Search the full U.S. product universe behind the strategy screen.</p></div>
-        <div className="intro-stat"><strong>{filtered.length.toLocaleString()}</strong><span>of {catalog.meta.products.toLocaleString()}</span></div>
+        <div><p className="eyebrow">Specialty screen</p><h1>Specialty product database</h1><p>Search the 81 products screened for concentrated call points, differentiated delivery, or high-support models.</p></div>
+        <div className="intro-stat"><strong>{filtered.length.toLocaleString()}</strong><span>of 81 candidates</span></div>
       </section>
       <section className="target-tools database-tools">
         <label className="search-field"><SearchIcon /><input value={query} onChange={(event) => { setQuery(event.target.value); setVisible(48); }} placeholder="Search product, ingredient, company or mechanism" /></label>
@@ -491,8 +498,8 @@ function DatabaseView({ catalog, strategyKey, onViewTarget }: { catalog: Catalog
       </section>
       <section className="database-list">
         {filtered.slice(0, visible).map((product) => {
-          const rank = strategyKey === "core" ? product.coreRank : product.specialtyRank;
-          const score = strategyKey === "core" ? product.coreScore : product.specialtyScore;
+          const rank = product.specialtyRank;
+          const score = product.specialtyScore;
           return (
             <article className={`database-row ${rank ? "linked" : ""}`} key={product.id}>
               <div className="database-name"><h3>{product.brand}</h3><span>{product.ingredient}</span></div>
@@ -501,7 +508,7 @@ function DatabaseView({ catalog, strategyKey, onViewTarget }: { catalog: Catalog
               <div><span className="row-label">Mechanism</span><strong>{short(product.mechanism ?? "Not classified", 90)}</strong></div>
               {rank && product.strategyAsset ? (
                 <button className="strategy-link" onClick={() => onViewTarget(product.strategyAsset!)}><b>#{rank}</b><span>{score} fit</span><ArrowIcon /></button>
-              ) : <span className="unranked">Wider universe</span>}
+              ) : <span className="unranked">Specialty candidate</span>}
             </article>
           );
         })}
@@ -534,7 +541,7 @@ function SavedView({
   return (
     <div className="view-stack">
       <section className="page-intro compact">
-        <div><p className="eyebrow">Active strategy</p><h1>Saved · {STRATEGY_NAMES[targets[0]?.strategy ?? "core"]}</h1><p>Keep the decision set tight.</p></div>
+        <div><p className="eyebrow">Specialty screen</p><h1>Saved · {SPECIALTY_STRATEGY_NAME}</h1><p>Keep the decision set tight.</p></div>
         <div className="intro-stat"><strong>{saved.length}</strong><span>saved assets</span></div>
       </section>
       {saved.length ? (
@@ -636,7 +643,7 @@ function ComparePanel({ targets, onClose, onRemove }: { targets: Target[]; onClo
 export function AcquisitionApp() {
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [loadError, setLoadError] = useState(false);
-  const [strategyKey, setStrategyKey] = useState<StrategyKey>("core");
+  const strategyKey: StrategyKey = "specialty";
   const [view, setView] = useState<View>("situation");
   const [hydrated, setHydrated] = useState(false);
   const [savedIds, setSavedIds] = useState<string[]>([]);
@@ -658,11 +665,7 @@ export function AcquisitionApp() {
   useEffect(() => {
     const timer = window.setTimeout(() => {
       const params = new URLSearchParams(window.location.search);
-      const urlStrategy = params.get("strategy");
       const urlView = params.get("view");
-      const storedStrategy = localStorage.getItem("cohaddy-strategy");
-      if (urlStrategy === "specialty" || urlStrategy === "core") setStrategyKey(urlStrategy);
-      else if (storedStrategy === "specialty" || storedStrategy === "core") setStrategyKey(storedStrategy);
       if (urlView && urlView in VIEW_LABELS) setView(urlView as View);
       try {
         const saved = JSON.parse(localStorage.getItem("cohaddy-saved") ?? "[]");
@@ -682,13 +685,11 @@ export function AcquisitionApp() {
 
   useEffect(() => {
     if (!hydrated) return;
-    localStorage.setItem("cohaddy-strategy", strategyKey);
     const params = new URLSearchParams();
-    if (strategyKey !== "core") params.set("strategy", strategyKey);
     if (view !== "situation") params.set("view", view);
     const query = params.toString();
     window.history.replaceState({}, "", `${window.location.pathname}${query ? `?${query}` : ""}`);
-  }, [hydrated, strategyKey, view]);
+  }, [hydrated, view]);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -711,14 +712,6 @@ export function AcquisitionApp() {
   const activeCompareIds = compareIds[strategyKey];
   const selectedTarget = targets.find((target) => target.id === selectedTargetId) ?? null;
   const comparedTargets = targets.filter((target) => activeCompareIds.includes(target.id));
-
-  function changeStrategy(next: StrategyKey) {
-    setSelectedTargetId(null);
-    setCompareOpen(false);
-    setStrategyKey(next);
-    setToast(`${STRATEGY_NAMES[next]} selected`);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
 
   function changeView(next: View) {
     setSelectedTargetId(null);
@@ -764,16 +757,16 @@ export function AcquisitionApp() {
       <header className="topbar">
         <button className="brand" onClick={() => changeView("situation")} aria-label="Cohaddy Bio strategy home">
           <span className="brand-mark">CB</span>
-          <span><strong>Cohaddy Bio</strong><small>Asset strategy</small></span>
+          <span><strong>Cohaddy Bio</strong><small>Specialty build</small></span>
         </button>
         <Nav view={view} onChange={changeView} />
-        <StrategyToggle value={strategyKey} onChange={changeStrategy} />
+        <div className="strategy-badge"><span>Option 2</span>New specialty platform</div>
       </header>
 
       <main className="page-shell">
-        {view === "situation" && <SituationView catalog={catalog} strategyKey={strategyKey} onStrategyChange={changeStrategy} />}
+        {view === "situation" && <SituationView catalog={catalog} onOpenTargets={() => changeView("targets")} onOpenDatabase={() => changeView("database")} />}
         {view === "targets" && <TargetsView catalog={catalog} targets={targets} strategy={strategy} savedIds={savedIds} compareIds={activeCompareIds} onOpen={setSelectedTargetId} onSave={toggleSaved} onCompare={toggleCompare} />}
-        {view === "database" && <DatabaseView catalog={catalog} strategyKey={strategyKey} onViewTarget={viewTarget} />}
+        {view === "database" && <DatabaseView catalog={catalog} onViewTarget={viewTarget} />}
         {view === "saved" && <SavedView catalog={catalog} targets={targets} savedIds={savedIds} compareIds={activeCompareIds} onOpen={setSelectedTargetId} onSave={toggleSaved} onCompare={toggleCompare} onBrowse={() => changeView("targets")} />}
       </main>
 
