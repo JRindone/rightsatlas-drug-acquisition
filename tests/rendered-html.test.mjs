@@ -39,6 +39,9 @@ test("keeps the two publishing targets aligned", async () => {
     assert.match(source, /rights holder, annual sales, call points/i);
   }
   assert.match(app, /Current platform/);
+  assert.match(app, /Current situation/);
+  assert.match(app, /1,605/);
+  assert.match(app, /Assets were screened as follows/);
   assert.match(app, /Prescribing info/);
   assert.match(catalog, /"strategyRecords":40/);
   assert.match(catalog, /Acquire into today’s call points/);

@@ -102,7 +102,7 @@ type Catalog = {
 };
 
 const VIEW_LABELS: Record<View, string> = {
-  situation: "Situation",
+  situation: "Current situation",
   targets: "Targets",
   database: "Database",
   saved: "Saved",
@@ -219,51 +219,70 @@ function SituationView({
 
   return (
     <div className="view-stack">
-      <section className="decision-hero">
-        <div>
-          <p className="eyebrow">{strategy.eyebrow}</p>
-          <h1>{strategy.title}</h1>
-          <p className="hero-copy">{strategy.description}</p>
-          <div className="hero-actions">
-            <button className="button primary" onClick={onOpenTargets}>Review ranked targets <ArrowIcon /></button>
-            <span className="verdict">{strategy.verdict}</span>
-          </div>
+      <section className="situation-intro">
+        <p className="eyebrow">CEO decision frame</p>
+        <h1>Current situation</h1>
+        <div className="situation-copy">
+          <p>Cohaddy Bio is an established life sciences company with marketed products in cardiology and psychiatry. Field teams primarily call on PCPs and supporting staff, with selective reach into cardiology and endocrinology.</p>
+          <p>Under experienced leadership, Cohaddy recently stabilized its balance sheet and is positioned to increase EBITDA and enterprise value by acquiring a U.S. commercial asset or its rights.</p>
         </div>
-        <div className="hero-metrics" aria-label="Strategy summary">
-          <div><strong>20</strong><span>ranked assets</span></div>
-          <div><strong>≤$100m</strong><span>annual-sales screen</span></div>
-          <div><strong>#{top.rank} {top.asset}</strong><span>{top.score} fit score</span></div>
+        <p className="options-lead">Two independent options exist:</p>
+        <div className="choice-grid situation-choices">
+          {(Object.keys(catalog.strategies) as StrategyKey[]).map((key) => (
+              <button key={key} className={`choice-card ${strategyKey === key ? "active" : ""}`} onClick={() => onStrategyChange(key)}>
+                <span>{key === "core" ? "Option 1 · Lower build" : "Option 2 · New platform"}</span>
+                <strong>{key === "core" ? "Acquire into current call points" : "Build a focused specialty team"}</strong>
+                <small>{key === "core" ? "Use existing PCP, staff, cardiology and psychiatry reach; add only missing specialist capacity." : "Stand up dedicated field, medical, access and patient-support capabilities around a coherent franchise."}</small>
+                <em>{strategyKey === key ? "Active across the app" : "Switch strategy"} →</em>
+              </button>
+          ))}
         </div>
       </section>
 
-      <section className="section-block">
+      <section className="section-block screening-section">
         <div className="section-heading">
-          <div><p className="eyebrow">Starting point</p><h2>Cohaddy’s situation</h2></div>
-          <p>One company. Two independent acquisition paths.</p>
+          <div><p className="eyebrow">Asset screen</p><h2>Assets were screened as follows</h2></div>
+          <p>One eligible universe. Two independent rankings.</p>
         </div>
-        <div className="situation-layout">
-          <article className="surface current-state">
-            <span className="surface-label">Cohaddy today</span>
-            <h3>Focused commercial reach</h3>
-            <div className="state-list">
-              <div><span>Therapy</span><strong>Cardiovascular risk + psychiatry</strong></div>
-              <div><span>Core reach</span><strong>GPs, nurses, NPs, PAs</strong></div>
-              <div><span>Selective</span><strong>Cardiology + endocrinology</strong></div>
-            </div>
-          </article>
-          <div className="choice-grid">
-            {(Object.keys(catalog.strategies) as StrategyKey[]).map((key) => {
-              const item = catalog.strategies[key];
-              return (
-                <button key={key} className={`choice-card ${strategyKey === key ? "active" : ""}`} onClick={() => onStrategyChange(key)}>
-                  <span>{key === "core" ? "Option 1" : "Option 2"}</span>
-                  <strong>{item.title}</strong>
-                  <small>{item.description}</small>
-                  <em>{strategyKey === key ? "Active" : "View option"} →</em>
-                </button>
-              );
-            })}
+        <div className="screening-funnel" aria-label="Screening funnel from 1,605 eligible products to two independent Top 20 strategy lists">
+          <div className="funnel-node funnel-start">
+            <strong>1,605</strong>
+            <span>FDA-approved, non-generic, non-oncology U.S. products</span>
           </div>
+          <div className="funnel-flow" aria-hidden="true"><i /><i /></div>
+          <div className="funnel-filters">
+            <span>Commercial asset</span>
+            <span>≈ $100m or less annual sales</span>
+            <span>Plausible rights path</span>
+            <span>Call-point or specialty-platform fit</span>
+          </div>
+          <div className="funnel-flow compact" aria-hidden="true"><i /><i /></div>
+          <div className="funnel-node funnel-finalists">
+            <strong>25</strong>
+            <span>unique priority assets</span>
+          </div>
+          <div className="funnel-split" aria-hidden="true"><span /><i /><span /></div>
+          <div className="funnel-outcomes">
+            <button className={strategyKey === "core" ? "active" : ""} onClick={() => onStrategyChange("core")}>
+              <span>Option 1</span><strong>Top 20</strong><small>Current call points</small>
+            </button>
+            <button className={strategyKey === "specialty" ? "active" : ""} onClick={() => onStrategyChange("specialty")}>
+              <span>Option 2</span><strong>Top 20</strong><small>New specialty team</small>
+            </button>
+          </div>
+          <p className="funnel-overlap"><strong>15</strong> assets appear in both lists and are scored separately.</p>
+        </div>
+      </section>
+
+      <section className="active-option">
+        <div>
+          <p className="eyebrow">{strategy.eyebrow}</p>
+          <h2>{strategy.title}</h2>
+          <p>{strategy.description}</p>
+        </div>
+        <div className="active-option-actions">
+          <span><strong>#{top.rank} {top.asset}</strong>{top.score} fit score</span>
+          <button className="button primary" onClick={onOpenTargets}>Review Top 20 <ArrowIcon /></button>
         </div>
       </section>
 
