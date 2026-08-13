@@ -2636,14 +2636,14 @@ h3,
 .detail-section h2,
 .method-panel h2,
 .section-heading h2 {
-  letter-spacing: -0.012em;
+  letter-spacing: 0.014em;
 }
 
 .hero-copy h1,
 .priority-hero h1,
 .method-hero h1,
 .drawer-header h1 {
-  letter-spacing: -0.018em;
+  letter-spacing: 0.01em;
 }
 
 p,
@@ -2668,6 +2668,11 @@ textarea,
 .filter-chip-grid button,
 .segmented-control button {
   letter-spacing: 0.025em;
+}
+
+strong,
+b {
+  letter-spacing: 0.026em;
 }
 
 @media (prefers-reduced-motion: reduce) {
