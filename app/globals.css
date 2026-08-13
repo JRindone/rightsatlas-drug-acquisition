@@ -260,7 +260,8 @@ h3 {
 
 .situation-copy p {
   color: var(--muted);
-  font-size: 17px;
+  font-size: 20px;
+  line-height: 1.55;
   margin: 0 0 14px;
 }
 
@@ -1651,7 +1652,7 @@ h3 {
   }
 
   .situation-copy p {
-    font-size: 18px;
+    font-size: 21px;
   }
 
   .screening-funnel {

@@ -234,8 +234,7 @@ function SituationView({
         <p className="eyebrow">CEO decision frame</p>
         <h1>Current situation</h1>
         <div className="situation-copy">
-          <p>Cohaddy Bio is an established life sciences company with marketed products in cardiology and psychiatry.</p>
-          <p>Field teams primarily call on PCPs and supporting staff, with selective reach into cardiology and endocrinology.</p>
+          <p>Cohaddy Bio is an established life sciences company with marketed products in cardiology and psychiatry. Field teams primarily call on PCPs and supporting staff, with selective reach into cardiology and endocrinology.</p>
           <p>Under experienced leadership, Cohaddy recently stabilized its balance sheet and is positioned to increase EBITDA and enterprise value by acquiring a U.S. commercial asset or its rights.</p>
         </div>
       </section>
