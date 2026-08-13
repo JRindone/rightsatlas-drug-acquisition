@@ -1,6 +1,6 @@
-@import "tailwindcss";
-
 :root {
+  --font-geist-sans: Arial, Helvetica, sans-serif;
+  --font-geist-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   --ink: #061412;
   --ink-2: #0b211e;
   --panel: #102b27;

@@ -191,7 +191,7 @@ export function AcquisitionApp() {
   const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    fetch("/data/catalog.json")
+    fetch(new URL("data/catalog.json", window.location.href).toString())
       .then((response) => {
         if (!response.ok) throw new Error("Data unavailable");
         return response.json();
