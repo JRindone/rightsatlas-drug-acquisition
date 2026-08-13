@@ -118,6 +118,8 @@ type View = "explore" | "priorities" | "saved" | "methodology";
 type ReviewStatus = "Saved" | "Reviewing" | "Diligence" | "Pass";
 type Review = { status: ReviewStatus; note: string; updatedAt: string };
 type Filters = {
+  dealScope: "all" | "shortlist" | "recommended";
+  salesBand: "all" | "under25" | "25to100" | "over100" | "unprofiled";
   productClass: string[];
   routeGroup: string[];
   rightsClass: string[];
@@ -127,6 +129,8 @@ type Filters = {
 };
 
 const EMPTY_FILTERS: Filters = {
+  dealScope: "all",
+  salesBand: "all",
   productClass: [],
   routeGroup: [],
   rightsClass: [],
@@ -136,10 +140,10 @@ const EMPTY_FILTERS: Filters = {
 };
 
 const VIEW_LABELS: Record<View, string> = {
-  explore: "Explore",
-  priorities: "Priorities",
-  saved: "My review",
-  methodology: "Method",
+  explore: "All assets",
+  priorities: "Deal flow",
+  saved: "My list",
+  methodology: "Deal criteria",
 };
 
 const formatNumber = (value: number) => new Intl.NumberFormat("en-US").format(value);
@@ -160,23 +164,26 @@ function toggleValue(values: string[], value: string) {
 
 function sourceLinks(value: Nullable<string>, label = "Evidence") {
   const urls = splitUrls(value);
-  if (!urls.length) return <span className="muted">No linked source in this record</span>;
+  if (!urls.length) return null;
   return (
-    <div className="source-links">
-      {urls.map((url, index) => (
-        <a href={url} target="_blank" rel="noreferrer" key={`${url}-${index}`}>
-          <span>{label} {urls.length > 1 ? index + 1 : ""}</span>
-          <small>{hostLabel(url)} ↗</small>
-        </a>
-      ))}
-    </div>
+    <details className="source-disclosure">
+      <summary>Reference links <span>+</span></summary>
+      <div className="source-links">
+        {urls.map((url, index) => (
+          <a href={url} target="_blank" rel="noreferrer" key={`${url}-${index}`}>
+            <span>{label} {urls.length > 1 ? index + 1 : ""}</span>
+            <small>{hostLabel(url)} ↗</small>
+          </a>
+        ))}
+      </div>
+    </details>
   );
 }
 
 export function AcquisitionApp() {
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [loadError, setLoadError] = useState(false);
-  const [view, setView] = useState<View>("explore");
+  const [view, setView] = useState<View>("priorities");
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [sort, setSort] = useState("strategic");
@@ -201,25 +208,28 @@ export function AcquisitionApp() {
   }, []);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const initialView = params.get("view") as View | null;
-    if (initialView && Object.keys(VIEW_LABELS).includes(initialView)) setView(initialView);
-    setQuery(params.get("q") ?? "");
-    setSelectedProductId(params.get("product"));
-    try {
-      const storedReviews = JSON.parse(localStorage.getItem("rightsatlas-reviews") ?? "{}");
-      const storedCompare = JSON.parse(localStorage.getItem("rightsatlas-compare") ?? "[]");
-      setReviews(storedReviews);
-      setCompareIds(Array.isArray(storedCompare) ? storedCompare.slice(0, 3) : []);
-    } catch {
-      setReviews({});
-      setCompareIds([]);
-    }
+    const timer = window.setTimeout(() => {
+      const params = new URLSearchParams(window.location.search);
+      const initialView = params.get("view") as View | null;
+      if (initialView && Object.keys(VIEW_LABELS).includes(initialView)) setView(initialView);
+      setQuery(params.get("q") ?? "");
+      setSelectedProductId(params.get("product"));
+      try {
+        const storedReviews = JSON.parse(localStorage.getItem("rightsatlas-reviews") ?? "{}");
+        const storedCompare = JSON.parse(localStorage.getItem("rightsatlas-compare") ?? "[]");
+        setReviews(storedReviews);
+        setCompareIds(Array.isArray(storedCompare) ? storedCompare.slice(0, 3) : []);
+      } catch {
+        setReviews({});
+        setCompareIds([]);
+      }
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   useEffect(() => {
     const params = new URLSearchParams();
-    if (view !== "explore") params.set("view", view);
+    if (view !== "priorities") params.set("view", view);
     if (query) params.set("q", query);
     if (selectedProductId) params.set("product", selectedProductId);
     const next = `${window.location.pathname}${params.size ? `?${params.toString()}` : ""}`;
@@ -257,6 +267,9 @@ export function AcquisitionApp() {
         product.applicationNumber,
         product.modality,
         product.therapyLens,
+        product.revenueDisplay,
+        product.rightsClass,
+        product.hlsStatus,
         product.moa,
         product.targets,
         product.targetGenes,
@@ -275,6 +288,12 @@ export function AcquisitionApp() {
     const filtered = catalog.products.filter((product) => {
       if (view === "saved" && !savedIds.has(product.id)) return false;
       if (terms.length && !terms.every((term) => searchIndex.get(product.id)?.includes(term))) return false;
+      if (filters.dealScope === "shortlist" && product.rank === null) return false;
+      if (filters.dealScope === "recommended" && product.hlsStatus !== "Recommended acquisition candidate") return false;
+      if (filters.salesBand === "under25" && (product.revenueUsdMm === null || product.revenueUsdMm >= 25)) return false;
+      if (filters.salesBand === "25to100" && (product.revenueUsdMm === null || product.revenueUsdMm < 25 || product.revenueUsdMm > 100)) return false;
+      if (filters.salesBand === "over100" && (product.revenueUsdMm === null || product.revenueUsdMm <= 100)) return false;
+      if (filters.salesBand === "unprofiled" && product.revenueUsdMm !== null) return false;
       if (filters.productClass.length && !filters.productClass.includes(product.productClass)) return false;
       if (filters.routeGroup.length && !filters.routeGroup.includes(product.routeGroup)) return false;
       if (filters.rightsClass.length && !filters.rightsClass.includes(product.rightsClass)) return false;
@@ -285,6 +304,9 @@ export function AcquisitionApp() {
       return true;
     });
     return filtered.sort((a, b) => {
+      if (sort === "sales-high") return (b.revenueUsdMm ?? -1) - (a.revenueUsdMm ?? -1);
+      if (sort === "sales-low") return (a.revenueUsdMm ?? Number.MAX_SAFE_INTEGER) - (b.revenueUsdMm ?? Number.MAX_SAFE_INTEGER);
+      if (sort === "fit") return (b.fitScore ?? -1) - (a.fitScore ?? -1);
       if (sort === "newest") return (b.approvalYear ?? 0) - (a.approvalYear ?? 0);
       if (sort === "oldest") return (a.approvalYear ?? 9999) - (b.approvalYear ?? 9999);
       if (sort === "company") return a.recommendedCompany.localeCompare(b.recommendedCompany);
@@ -298,9 +320,14 @@ export function AcquisitionApp() {
     });
   }, [catalog, filters, query, reviews, searchIndex, sort, view]);
 
-  useEffect(() => setVisibleCount(30), [filters, query, sort, view]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setVisibleCount(30), 0);
+    return () => window.clearTimeout(timer);
+  }, [filters, query, sort, view]);
 
   const activeFilterCount =
+    (filters.dealScope === "all" ? 0 : 1) +
+    (filters.salesBand === "all" ? 0 : 1) +
     filters.productClass.length +
     filters.routeGroup.length +
     filters.rightsClass.length +
@@ -355,7 +382,7 @@ export function AcquisitionApp() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const applyPreset = (preset: "priority" | "oral-rights" | "unresolved" | "high-confidence") => {
+  const applyPreset = (preset: "priority" | "oral-rights" | "cardiology" | "psychiatry") => {
     if (preset === "priority") {
       navigate("priorities");
       return;
@@ -364,24 +391,26 @@ export function AcquisitionApp() {
     if (preset === "oral-rights") {
       setFilters({ ...EMPTY_FILTERS, routeGroup: ["Oral"], rightsClass: ["Deal rule applied"] });
     }
-    if (preset === "unresolved") setFilters({ ...EMPTY_FILTERS, moa: "unresolved" });
-    if (preset === "high-confidence") setFilters({ ...EMPTY_FILTERS, rightsConfidence: ["High"] });
+    if (preset === "cardiology" || preset === "psychiatry") {
+      setFilters(EMPTY_FILTERS);
+      setQuery(preset);
+    }
   };
 
   const exportCsv = () => {
-    const headers = ["Brand", "Ingredient", "Recommended rights company", "Application", "Modality", "Route", "Approval year", "Rights status", "Rights confidence", "HLS status", "Fit score", "Next diligence"];
+    const headers = ["Asset", "Ingredient", "Therapeutic area", "Current U.S. rights holder", "Recent annual sales", "Sales period", "Recommendation", "Fit score", "Transaction signal", "Route", "Application", "Next diligence"];
     const rows = filteredProducts.map((product) => [
       product.brand,
       product.ingredient,
+      product.therapyLens ?? "",
       product.recommendedCompany,
-      `${product.applicationType} ${product.applicationNumber}`,
-      product.modality,
-      product.route,
-      product.approvalYear ?? "",
-      product.rightsStatus,
-      product.rightsConfidence,
-      product.hlsStatus,
+      product.revenueDisplay ?? "",
+      product.revenuePeriod ?? "",
+      product.tier ?? product.hlsStatus,
       product.fitScore ?? "",
+      product.transactionSignal ?? "",
+      product.route,
+      `${product.applicationType} ${product.applicationNumber}`,
       product.nextDiligence,
     ]);
     const csv = [headers, ...rows]
@@ -438,7 +467,7 @@ export function AcquisitionApp() {
   return (
     <div className="app-shell">
       <header className="topbar">
-        <button className="brand" onClick={() => navigate("explore")} aria-label="RightsAtlas home">
+        <button className="brand" onClick={() => navigate("priorities")} aria-label="RightsAtlas home">
           <span className="brand-mark">RA</span>
           <span><strong>RightsAtlas</strong><small>U.S. acquisition desk</small></span>
         </button>
@@ -476,18 +505,13 @@ export function AcquisitionApp() {
         <main>
           <section className="search-hero">
             <div className="hero-copy">
-              <p className="eyebrow">Regulatory + commercial rights intelligence</p>
-              <h1>{view === "saved" ? "Your acquisition review queue." : "Find the products worth a closer look."}</h1>
+              <p className="eyebrow">U.S. product acquisition workspace</p>
+              <h1>{view === "saved" ? "The assets on your deal list." : "Find an asset worth pursuing."}</h1>
               <p>
                 {view === "saved"
-                  ? "Keep decisions, notes, and diligence priorities together on this device."
-                  : "Query 1,605 non-genericized, non-oncology U.S. products and trace each result from FDA record to rights recommendation."}
+                  ? "Keep your thesis, next step, and comparison set together as the opportunity develops."
+                  : "Search by rights holder, therapeutic area, annual sales, brand, or ingredient—then move the best opportunities into your deal list."}
               </p>
-            </div>
-            <div className="snapshot-stamp">
-              <span>DATA SNAPSHOT</span>
-              <strong>11 AUG 2026</strong>
-              <small>Public-source screen</small>
             </div>
             <div className="search-box">
               <span aria-hidden="true">⌕</span>
@@ -496,46 +520,42 @@ export function AcquisitionApp() {
                 type="search"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search brand, ingredient, company, mechanism, target…"
+                placeholder="Search asset, rights holder, therapy area, sales…"
                 aria-label="Search products"
               />
               {query ? <button onClick={() => setQuery("")} aria-label="Clear search">×</button> : <kbd>⌘ K</kbd>}
             </div>
             {view === "explore" ? (
               <div className="query-presets" aria-label="Suggested queries">
-                <button onClick={() => applyPreset("priority")}><span>01</span> Priority targets</button>
-                <button onClick={() => applyPreset("oral-rights")}><span>02</span> Oral + deal rule</button>
-                <button onClick={() => applyPreset("high-confidence")}><span>03</span> High-confidence rights</button>
-                <button onClick={() => applyPreset("unresolved")}><span>04</span> MOA unresolved</button>
+                <button onClick={() => applyPreset("priority")}><span>01</span> Ranked deal flow</button>
+                <button onClick={() => applyPreset("cardiology")}><span>02</span> Cardiology</button>
+                <button onClick={() => applyPreset("psychiatry")}><span>03</span> Psychiatry</button>
+                <button onClick={() => applyPreset("oral-rights")}><span>04</span> Oral + transaction history</button>
               </div>
             ) : null}
           </section>
 
-          <section className="metric-strip" aria-label="Dataset overview">
-            <Metric value={catalog.meta.totals.products} label="screened products" accent />
-            <Metric value={catalog.meta.totals.rightsRules} label="public rights rules" />
-            <Metric value={catalog.meta.totals.moaResolved} label="MOA matched" />
-            <Metric value={catalog.meta.totals.recommended} label="recommended candidates" />
+          <section className="metric-strip" aria-label="Deal-flow overview">
+            <Metric value={catalog.meta.totals.shortlisted} label="assets with sales context" accent />
+            <Metric value={catalog.meta.totals.recommended} label="recommended to pursue" />
+            <Metric value={4} label="front-of-queue assets" />
+            <Metric value={2} label="active partnering signals" />
           </section>
 
           <div className="explorer-layout">
             <aside className="filter-rail">
               <div className="filter-rail-heading">
-                <h2>Refine universe</h2>
+                <h2>Filter assets</h2>
                 {activeFilterCount ? <button onClick={() => setFilters(EMPTY_FILTERS)}>Reset</button> : null}
               </div>
               {filtersPanel}
-              <div className="data-note">
-                <span>i</span>
-                <p>Rights-company recommendations are a screening baseline, not a legal chain-of-title opinion.</p>
-              </div>
             </aside>
 
             <section className="results-pane">
               <div className="results-toolbar">
                 <div>
-                  <p>{query ? `Results for “${query}”` : view === "saved" ? "Saved records" : "Screened universe"}</p>
-                  <strong>{formatNumber(filteredProducts.length)} products</strong>
+                  <p>{query ? `Results for “${query}”` : view === "saved" ? "Your active list" : "Available product universe"}</p>
+                  <strong>{formatNumber(filteredProducts.length)} assets</strong>
                 </div>
                 <div className="toolbar-actions">
                   <button className="filter-trigger" onClick={() => setFiltersOpen(true)}>
@@ -544,7 +564,10 @@ export function AcquisitionApp() {
                   <label className="sort-control">
                     <span>Sort</span>
                     <select value={sort} onChange={(event) => setSort(event.target.value)}>
-                      <option value="strategic">Strategic relevance</option>
+                      <option value="strategic">Deal priority</option>
+                      <option value="sales-high">Annual sales: high to low</option>
+                      <option value="sales-low">Annual sales: low to high</option>
+                      <option value="fit">Strategic fit</option>
                       <option value="newest">Newest approval</option>
                       <option value="oldest">Oldest approval</option>
                       <option value="company">Rights company</option>
@@ -618,10 +641,10 @@ export function AcquisitionApp() {
         <div className="overlay" role="presentation" onMouseDown={() => setFiltersOpen(false)}>
           <section className="filter-sheet" role="dialog" aria-modal="true" aria-label="Product filters" onMouseDown={(event) => event.stopPropagation()}>
             <div className="sheet-handle" />
-            <div className="sheet-header"><div><p>Refine universe</p><h2>Filters</h2></div><button onClick={() => setFiltersOpen(false)} aria-label="Close filters">×</button></div>
+            <div className="sheet-header"><div><p>Narrow the opportunity set</p><h2>Deal filters</h2></div><button onClick={() => setFiltersOpen(false)} aria-label="Close filters">×</button></div>
             {filtersPanel}
             <button className="button primary sheet-apply" onClick={() => setFiltersOpen(false)}>
-              View {formatNumber(filteredProducts.length)} products
+              View {formatNumber(filteredProducts.length)} assets
             </button>
           </section>
         </div>
@@ -648,7 +671,7 @@ function LoadingScreen() {
   return (
     <div className="loading-screen">
       <div className="loading-brand"><span className="brand-mark">RA</span><strong>RightsAtlas</strong></div>
-      <div className="loading-copy"><span>LOADING SCREENED UNIVERSE</span><h1>Assembling regulatory and rights intelligence.</h1></div>
+      <div className="loading-copy"><span>OPENING DEAL WORKSPACE</span><h1>Assembling the asset opportunity set.</h1></div>
       <div className="loading-track"><i /></div>
     </div>
   );
@@ -673,42 +696,66 @@ function FilterControls({
 }) {
   return (
     <div className="filter-controls">
-      <FilterGroup title="Product class">
-        {["NDA product", "Biologic"].map((value) => (
-          <CheckFilter key={value} label={value} checked={filters.productClass.includes(value)} onChange={() => setFilters({ ...filters, productClass: toggleValue(filters.productClass, value) })} />
-        ))}
-      </FilterGroup>
-      <FilterGroup title="U.S. rights basis">
-        {["Deal rule applied", "FDA holder proxy"].map((value) => (
-          <CheckFilter key={value} label={value} checked={filters.rightsClass.includes(value)} onChange={() => setFilters({ ...filters, rightsClass: toggleValue(filters.rightsClass, value) })} />
-        ))}
-      </FilterGroup>
-      <FilterGroup title="Rights confidence">
-        {["High", "Medium"].map((value) => (
-          <CheckFilter key={value} label={value} checked={filters.rightsConfidence.includes(value)} onChange={() => setFilters({ ...filters, rightsConfidence: toggleValue(filters.rightsConfidence, value) })} />
-        ))}
-      </FilterGroup>
-      <FilterGroup title="MOA / target coverage">
-        <div className="segmented-control">
-          {(["all", "resolved", "unresolved"] as const).map((value) => (
-            <button key={value} className={filters.moa === value ? "active" : ""} onClick={() => setFilters({ ...filters, moa: value })}>{value}</button>
+      <FilterGroup title="Deal stage">
+        <div className="segmented-control deal-scope-control">
+          {([
+            ["all", "All assets"],
+            ["shortlist", "Sales profile"],
+            ["recommended", "Recommended"],
+          ] as const).map(([value, label]) => (
+            <button key={value} className={filters.dealScope === value ? "active" : ""} onClick={() => setFilters({ ...filters, dealScope: value })}>{label}</button>
           ))}
         </div>
       </FilterGroup>
-      <FilterGroup title="Route">
+      <FilterGroup title="Annual U.S. sales">
+        <div className="filter-chip-grid sales-band-grid">
+          {([
+            ["all", "Any sales"],
+            ["under25", "Under $25m"],
+            ["25to100", "$25–100m"],
+            ["over100", "$100m+"],
+            ["unprofiled", "Not profiled"],
+          ] as const).map(([value, label]) => (
+            <button key={value} className={filters.salesBand === value ? "active" : ""} onClick={() => setFilters({ ...filters, salesBand: value })}>{label}</button>
+          ))}
+        </div>
+      </FilterGroup>
+      <FilterGroup title="Rights situation">
+        {[["Deal rule applied", "Transaction or partner signal"], ["FDA holder proxy", "Current holder only"]].map(([value, label]) => (
+          <CheckFilter key={value} label={label} checked={filters.rightsClass.includes(value)} onChange={() => setFilters({ ...filters, rightsClass: toggleValue(filters.rightsClass, value) })} />
+        ))}
+      </FilterGroup>
+      <FilterGroup title="Commercial format">
         <div className="filter-chip-grid">
           {routeOptions.map((value) => (
             <button key={value} className={filters.routeGroup.includes(value) ? "active" : ""} onClick={() => setFilters({ ...filters, routeGroup: toggleValue(filters.routeGroup, value) })}>{value}</button>
           ))}
         </div>
       </FilterGroup>
-      <FilterGroup title="First approval decade">
-        <div className="filter-chip-grid compact">
-          {decadeOptions.map((value) => (
-            <button key={value} className={filters.decade.includes(value) ? "active" : ""} onClick={() => setFilters({ ...filters, decade: toggleValue(filters.decade, value) })}>{value}</button>
-          ))}
+      <details className="more-filters">
+        <summary>More product filters <span>+</span></summary>
+        <div>
+          <FilterGroup title="Product class">
+            {["NDA product", "Biologic"].map((value) => (
+              <CheckFilter key={value} label={value} checked={filters.productClass.includes(value)} onChange={() => setFilters({ ...filters, productClass: toggleValue(filters.productClass, value) })} />
+            ))}
+          </FilterGroup>
+          <FilterGroup title="First approval decade">
+            <div className="filter-chip-grid compact">
+              {decadeOptions.map((value) => (
+                <button key={value} className={filters.decade.includes(value) ? "active" : ""} onClick={() => setFilters({ ...filters, decade: toggleValue(filters.decade, value) })}>{value}</button>
+              ))}
+            </div>
+          </FilterGroup>
+          <FilterGroup title="Mechanism coverage">
+            <div className="segmented-control">
+              {(["all", "resolved", "unresolved"] as const).map((value) => (
+                <button key={value} className={filters.moa === value ? "active" : ""} onClick={() => setFilters({ ...filters, moa: value })}>{value}</button>
+              ))}
+            </div>
+          </FilterGroup>
         </div>
-      </FilterGroup>
+      </details>
       <button className="clear-filters" onClick={onClear}>Clear all filters</button>
     </div>
   );
@@ -724,10 +771,11 @@ function CheckFilter({ label, checked, onChange }: { label: string; checked: boo
 
 function ActiveFilters({ filters, setFilters }: { filters: Filters; setFilters: (filters: Filters) => void }) {
   const chips: Array<{ label: string; clear: () => void }> = [
+    ...(filters.dealScope !== "all" ? [{ label: filters.dealScope === "shortlist" ? "Sales profile" : "Recommended", clear: () => setFilters({ ...filters, dealScope: "all" }) }] : []),
+    ...(filters.salesBand !== "all" ? [{ label: { under25: "Under $25m", "25to100": "$25–100m", over100: "$100m+", unprofiled: "Sales not profiled" }[filters.salesBand], clear: () => setFilters({ ...filters, salesBand: "all" }) }] : []),
     ...filters.productClass.map((value) => ({ label: value, clear: () => setFilters({ ...filters, productClass: filters.productClass.filter((item) => item !== value) }) })),
     ...filters.routeGroup.map((value) => ({ label: value, clear: () => setFilters({ ...filters, routeGroup: filters.routeGroup.filter((item) => item !== value) }) })),
     ...filters.rightsClass.map((value) => ({ label: value, clear: () => setFilters({ ...filters, rightsClass: filters.rightsClass.filter((item) => item !== value) }) })),
-    ...filters.rightsConfidence.map((value) => ({ label: `${value} confidence`, clear: () => setFilters({ ...filters, rightsConfidence: filters.rightsConfidence.filter((item) => item !== value) }) })),
     ...filters.decade.map((value) => ({ label: value, clear: () => setFilters({ ...filters, decade: filters.decade.filter((item) => item !== value) }) })),
     ...(filters.moa !== "all" ? [{ label: `MOA ${filters.moa}`, clear: () => setFilters({ ...filters, moa: "all" }) }] : []),
   ];
@@ -757,16 +805,18 @@ function ProductRow({
         <span className="product-identity">
           <span className="product-title-line"><strong>{product.brand}</strong>{isStrategic ? <em>{product.tier}</em> : null}</span>
           <span className="ingredient">{product.ingredient}</span>
-          <span className="company">{product.recommendedCompany}</span>
         </span>
-        <span className="product-facts">
-          <span>{product.productClass}</span>
-          <span>{product.routeGroup}</span>
-          <span>{product.approvalYear ?? "—"}</span>
+        <span className="deal-fact rights-holder-fact">
+          <small>U.S. rights holder</small>
+          <strong>{product.recommendedCompany}</strong>
         </span>
-        <span className="rights-signal">
-          <i className={product.rightsConfidence === "High" ? "signal high" : "signal"} />
-          <span><small>Rights confidence</small><strong>{product.rightsConfidence}</strong></span>
+        <span className="deal-fact sales-fact">
+          <small>Annual sales</small>
+          <strong>{product.revenueDisplay ?? "Not yet profiled"}</strong>
+        </span>
+        <span className="deal-fact therapy-fact">
+          <small>Therapeutic area</small>
+          <strong>{product.therapyLens ?? product.modality}</strong>
         </span>
         {isStrategic ? <span className="fit-score"><small>FIT</small><strong>{product.fitScore}</strong></span> : null}
         <span className="row-arrow">→</span>
@@ -816,23 +866,30 @@ function PrioritiesView({
     if (shortlistFilter === "All") return true;
     return String(item["Recommendation Tier"]).toLowerCase().includes(shortlistFilter.toLowerCase());
   });
-  const topThree = catalog.shortlist.slice(0, 3);
+  const topTargets = catalog.shortlist.slice(0, 4);
   return (
     <main className="priorities-page">
       <section className="priority-hero">
         <div>
-          <p className="eyebrow">Focused acquisition screen</p>
-          <h1>Start with the four assets that clear both fit and actionability.</h1>
-          <p>Scores combine therapy alignment, GP and nurse call-point leverage, commercial model, revenue size, transaction signal, and rights simplicity.</p>
+          <p className="eyebrow">Ranked U.S. deal flow</p>
+          <h1>Find the next asset HLS can actually win.</h1>
+          <p>Start with the rights holder, annual sales, therapeutic fit, and the signal that makes an approach worth the time.</p>
         </div>
         <aside>
-          <span>RECOMMENDED MOVE</span>
-          <p>Begin parallel outreach on <strong>TRYVIO</strong> and <strong>INPEFA</strong>. Pursue <strong>LODOCO</strong> as the differentiated tuck-in and <strong>ZYPITAMAG</strong> as the smallest immediate bolt-on.</p>
+          <span>DEAL THESIS</span>
+          <p>Open parallel conversations on <strong>TRYVIO</strong> and <strong>INPEFA</strong>. Keep <strong>LODOCO</strong> and <strong>ZYPITAMAG</strong> close as practical tuck-ins with manageable sales bases.</p>
         </aside>
       </section>
 
+      <section className="deal-summary" aria-label="Priority deal summary">
+        <div><strong>4</strong><span>front-of-queue assets</span></div>
+        <div><strong>$2.5–17.5m</strong><span>top-target annual sales range</span></div>
+        <div><strong>2</strong><span>clear partnering or reset signals</span></div>
+        <div><strong>Oral chronic</strong><span>preferred commercial model</span></div>
+      </section>
+
       <section className="top-targets">
-        {topThree.map((item, index) => {
+        {topTargets.map((item, index) => {
           const id = String(item["Database Record ID"]);
           const product = productsById.get(id);
           if (!product) return null;
@@ -841,8 +898,8 @@ function PrioritiesView({
               <div className="target-rank"><span>0{index + 1}</span><i /></div>
               <div className="target-card-head"><div><small>{item["Recommendation Tier"]}</small><h2>{item.Asset}</h2><p>{item["Active Ingredient"]}</p></div><div className="score-ring" style={{ "--score": Number(item["Fit Score"]) } as React.CSSProperties}><strong>{item["Fit Score"]}</strong><small>FIT</small></div></div>
               <p className="target-area">{item["Therapy Area"]}</p>
-              <div className="target-signal"><small>Why it moves</small><p>{item["Transaction / Partnering Signal"]}</p></div>
-              <div className="target-revenue"><span><small>Recent U.S. revenue</small><strong>{item["Recent Revenue"]}</strong></span><em>{item["Evidence Type"]}</em></div>
+              <div className="target-deal-facts"><span><small>Rights holder</small><strong>{item["Current U.S. Rights Company"]}</strong></span><span><small>Annual sales</small><strong>{item["Recent Revenue"]}</strong></span></div>
+              <div className="target-signal"><small>Deal signal</small><p>{item["Transaction / Partnering Signal"]}</p></div>
               <div className="target-actions">
                 <button className="button primary" onClick={() => openProduct(id)}>Review asset</button>
                 <button className={compareIds.includes(id) ? "icon-action selected" : "icon-action"} onClick={() => toggleCompare(id)} aria-label={`Compare ${item.Asset}`}>{compareIds.includes(id) ? "✓" : "+"}</button>
@@ -854,7 +911,7 @@ function PrioritiesView({
       </section>
 
       <section className="priority-stack">
-        <div className="section-heading"><div><p className="eyebrow">Full decision stack</p><h2>12 researched assets</h2></div><p>Revenue values are directional screening inputs; reported evidence ranks above calculated, proxy, and estimated values.</p></div>
+        <div className="section-heading"><div><p className="eyebrow">Complete opportunity set</p><h2>12 assets with commercial context</h2></div><p>Compare sales scale, rights holder, strategic fit, and transaction realism before moving an asset into your list.</p></div>
         <div className="tier-tabs" role="tablist">
           {tiers.map((tier) => <button role="tab" aria-selected={shortlistFilter === tier} className={shortlistFilter === tier ? "active" : ""} onClick={() => setShortlistFilter(tier)} key={tier}>{tier}</button>)}
         </div>
@@ -867,9 +924,10 @@ function PrioritiesView({
                 <button className="decision-main" onClick={() => openProduct(id)}>
                   <span className="decision-rank">{String(item["Priority Rank"]).padStart(2, "0")}</span>
                   <span className="decision-asset"><strong>{item.Asset}</strong><small>{item["Active Ingredient"]}</small></span>
-                  <span className="decision-tier">{item["Recommendation Tier"]}</span>
+                  <span className="decision-holder"><small>Rights holder</small><strong>{item["Current U.S. Rights Company"]}</strong></span>
+                  <span className="decision-tier">{item["Therapy Area"]}</span>
                   <span className="decision-bar"><i style={{ width: `${score}%` }} /><small>{score}</small></span>
-                  <span className="decision-revenue"><small>{item["Evidence Type"]}</small><strong>${item["US$mm"]}m</strong></span>
+                  <span className="decision-revenue"><small>Annual sales</small><strong>${item["US$mm"]}m</strong></span>
                   <span className="row-arrow">→</span>
                 </button>
                 <button className={compareIds.includes(id) ? "decision-compare selected" : "decision-compare"} onClick={() => toggleCompare(id)}>{compareIds.includes(id) ? "✓" : "+"}</button>
@@ -885,14 +943,13 @@ function PrioritiesView({
 function MethodologyView({ catalog }: { catalog: Catalog }) {
   return (
     <main className="methodology-page">
-      <section className="method-hero"><p className="eyebrow">Transparent by design</p><h1>Screening logic you can challenge, trace, and extend.</h1><p>This is a public-source regulatory and commercial-rights screen—not legal diligence, valuation, or a probability-of-close model.</p></section>
+      <section className="method-hero"><p className="eyebrow">Deal criteria</p><h1>What makes an asset worth pursuing.</h1><p>The screen favors a reachable rights holder, intelligible sales scale, focused therapeutic fit, and a credible reason to start a conversation.</p></section>
       <section className="method-grid">
         <article className="method-panel strategy-panel"><div className="panel-number">01</div><div><p className="eyebrow">Strategic frame</p><h2>What earns attention</h2></div>{catalog.strategy.map((item) => <details key={item.dimension}><summary><strong>{item.dimension}</strong><span>+</span></summary><p>{item.interpretation}</p><small>{item.impact}</small></details>)}</article>
-        <article className="method-panel score-panel"><div className="panel-number">02</div><div><p className="eyebrow">100-point screen</p><h2>How fit is scored</h2></div><div className="score-components">{catalog.scoring.map((item) => <div key={item.component}><span><strong>{item.component}</strong><small>{item.interpretation}</small></span><b>{item.points}</b></div>)}</div></article>
-        <article className="method-panel evidence-panel"><div className="panel-number">03</div><div><p className="eyebrow">Evidence hierarchy</p><h2>How revenue is treated</h2></div>{catalog.evidenceHierarchy.map((item, index) => <div className="evidence-step" key={item.type}><span>{String(index + 1).padStart(2, "0")}</span><div><strong>{item.type}</strong><p>{item.definition}</p></div><small>{item.confidence}</small></div>)}</article>
-        <article className="method-panel caveat-panel"><div className="panel-number">04</div><div><p className="eyebrow">Decision boundary</p><h2>What this screen does not prove</h2></div><ul><li>Legal chain of title or transferability of private licenses</li><li>Current promotion, inventory, or commercial availability</li><li>Patent, exclusivity, supply, REMS, reimbursement, or antitrust conclusions</li><li>Seller willingness, transaction value, or purchase-price feasibility</li></ul></article>
+        <article className="method-panel score-panel"><div className="panel-number">02</div><div><p className="eyebrow">Priority score</p><h2>How opportunities are ranked</h2></div><div className="score-components">{catalog.scoring.map((item) => <div key={item.component}><span><strong>{item.component}</strong><small>{item.interpretation}</small></span><b>{item.points}</b></div>)}</div></article>
+        <article className="method-panel deal-lens-panel"><div className="panel-number">03</div><div><p className="eyebrow">First conversation</p><h2>The four questions that matter</h2></div><div className="deal-lens-list"><div><strong>Who controls the U.S. rights?</strong><p>Identify the company that can engage on a license, carve-out, or acquisition.</p></div><div><strong>How large is the asset today?</strong><p>Use annual sales to distinguish practical tuck-ins from larger strategic bets.</p></div><div><strong>Can the commercial model travel?</strong><p>Favor therapies, call points, and formats that fit a focused commercial team.</p></div><div><strong>Why would the holder transact?</strong><p>Look for portfolio resets, partnering language, or a credible change-of-control path.</p></div></div></article>
+        <article className="method-panel caveat-panel"><div className="panel-number">04</div><div><p className="eyebrow">Use in context</p><h2>A screen for conversations—not a valuation</h2></div><p>RightsAtlas helps decide where to spend business-development time. A live opportunity still needs direct holder contact, financial modeling, legal review, and confirmatory diligence.</p></article>
       </section>
-      <section className="source-registry"><div className="section-heading"><div><p className="eyebrow">Source registry</p><h2>Public evidence used in the focused screen</h2></div><p>{catalog.sources.length} source records</p></div><div className="source-table">{catalog.sources.map((source) => <a href={source.url} target="_blank" rel="noreferrer" key={`${source.name}-${source.url}`}><span><small>{source.category}</small><strong>{source.name}</strong></span><p>{source.finding}</p><b>↗</b></a>)}</div></section>
     </main>
   );
 }
@@ -914,29 +971,32 @@ function ProductDrawer({
   onRemoveReview: () => void;
   onCompare: () => void;
 }) {
-  const [tab, setTab] = useState<"case" | "rights" | "product" | "evidence">(product.fitScore ? "case" : "rights");
+  const [tab, setTab] = useState<"case" | "rights" | "product">(product.fitScore ? "case" : "rights");
   return (
     <div className="overlay drawer-overlay" role="presentation" onMouseDown={onClose}>
       <aside className="product-drawer" role="dialog" aria-modal="true" aria-label={`${product.brand} product detail`} onMouseDown={(event) => event.stopPropagation()}>
         <div className="drawer-topline"><button onClick={onClose}>← <span>Back</span></button><div><button className={review ? "selected" : ""} onClick={() => review ? onRemoveReview() : onUpdateReview({ status: "Saved" })}>{review ? "◆ Saved" : "◇ Save"}</button><button className={isCompared ? "selected" : ""} onClick={onCompare}>{isCompared ? "✓ Comparing" : "+ Compare"}</button></div></div>
         <header className="drawer-header">
-          <div className="drawer-kicker"><span>{product.applicationType} {product.applicationNumber}</span><i /> <span>{product.productClass}</span></div>
+          <div className="drawer-kicker"><span>{product.therapyLens ?? product.modality}</span><i /> <span>{product.commercialForm ?? product.routeGroup}</span></div>
           <h1>{product.brand}</h1>
           <p>{product.ingredient}</p>
-          <div className="drawer-company"><small>Recommended current U.S. rights company</small><strong>{product.recommendedCompany}</strong></div>
-          {product.fitScore ? <div className="drawer-recommendation"><span className="score-ring small" style={{ "--score": product.fitScore } as React.CSSProperties}><strong>{product.fitScore}</strong><small>FIT</small></span><div><small>{product.tier}</small><p>{product.therapyLens}</p></div></div> : null}
+          <div className="drawer-deal-grid">
+            <div><small>U.S. rights holder</small><strong>{product.recommendedCompany}</strong></div>
+            <div><small>Annual sales</small><strong>{product.revenueDisplay ?? "Not yet profiled"}</strong></div>
+            <div><small>Therapeutic area</small><strong>{product.therapyLens ?? product.modality}</strong></div>
+            <div><small>Recommendation</small><strong>{product.tier ?? product.hlsStatus}</strong></div>
+          </div>
+          {product.fitScore ? <div className="drawer-recommendation"><span className="score-ring small" style={{ "--score": product.fitScore } as React.CSSProperties}><strong>{product.fitScore}</strong><small>FIT</small></span><div><small>Strategic fit</small><p>{product.commercialFit}</p></div></div> : null}
         </header>
         <nav className="drawer-tabs">
           {product.fitScore ? <button className={tab === "case" ? "active" : ""} onClick={() => setTab("case")}>Acquisition case</button> : null}
-          <button className={tab === "rights" ? "active" : ""} onClick={() => setTab("rights")}>Rights</button>
+          <button className={tab === "rights" ? "active" : ""} onClick={() => setTab("rights")}>Deal profile</button>
           <button className={tab === "product" ? "active" : ""} onClick={() => setTab("product")}>Product</button>
-          <button className={tab === "evidence" ? "active" : ""} onClick={() => setTab("evidence")}>Evidence</button>
         </nav>
         <div className="drawer-body">
           {tab === "case" ? <AcquisitionCase product={product} /> : null}
           {tab === "rights" ? <RightsDetail product={product} /> : null}
           {tab === "product" ? <ProductDetail product={product} /> : null}
-          {tab === "evidence" ? <EvidenceDetail product={product} /> : null}
           <section className="review-workspace">
             <div><span className="section-number">YOUR REVIEW</span><h2>Decision notes</h2></div>
             <label><span>Status</span><select value={review?.status ?? "Saved"} onChange={(event) => onUpdateReview({ status: event.target.value as ReviewStatus })}><option>Saved</option><option>Reviewing</option><option>Diligence</option><option>Pass</option></select></label>
@@ -960,7 +1020,7 @@ function AcquisitionCase({ product }: { product: Product }) {
       <section className="detail-section"><span className="section-number">02 / ACTIONABILITY</span><h2>Transaction signal</h2><p>{displayValue(product.transactionSignal)}</p></section>
       <section className="detail-section"><span className="section-number">03 / CALL POINTS</span><div className="two-column-copy"><div><h3>Core reach</h3><p>{displayValue(product.primaryCallPoints)}</p></div><div><h3>Expansion lane</h3><p>{displayValue(product.specialistCallPoints)}</p></div></div></section>
       <section className="detail-section risk-section"><span className="section-number">04 / WATCH ITEMS</span><h2>Key risks & diligence</h2><p>{displayValue(product.keyRisks)}</p></section>
-      <section className="detail-section"><span className="section-number">05 / REVENUE BASIS</span><h2>{displayValue(product.revenueThreshold)}</h2><p>{displayValue(product.revenueMethodology)}</p>{sourceLinks(product.revenueUrls, "Revenue source")}</section>
+      <details className="secondary-detail"><summary>Sales context <span>+</span></summary><div><h3>{displayValue(product.revenueThreshold)}</h3><p>{displayValue(product.revenueMethodology)}</p>{sourceLinks(product.revenueUrls, "Sales reference")}</div></details>
     </>
   );
 }
@@ -968,12 +1028,11 @@ function AcquisitionCase({ product }: { product: Product }) {
 function RightsDetail({ product }: { product: Product }) {
   return (
     <>
-      <section className="rights-verdict"><div><small>RIGHTS BASIS</small><strong>{product.rightsClass}</strong></div><div><small>CONFIDENCE</small><strong><i className={product.rightsConfidence === "High" ? "signal high" : "signal"} /> {product.rightsConfidence}</strong></div></section>
-      <section className="detail-section"><span className="section-number">01 / RECOMMENDATION</span><h2>{product.recommendedCompany}</h2><p>{product.rightsEvidence}</p>{product.rightsRuleId ? <div className="rule-id"><span>Matched rule</span><strong>{product.rightsRuleId}</strong></div> : null}</section>
-      {product.rightsFinding ? <section className="detail-section"><span className="section-number">02 / CURRENT FINDING</span><p className="lead-copy">{product.rightsFinding}</p></section> : null}
-      <section className="detail-section"><span className="section-number">03 / TERM</span><h2>{product.rightsDuration}</h2><p>{product.rightsDurationBasis}</p></section>
-      <section className="detail-section diligence-section"><span className="section-number">04 / NEXT DILIGENCE ACTION</span><p>{product.nextDiligence}</p></section>
-      <section className="detail-section"><span className="section-number">05 / EVIDENCE</span>{sourceLinks(product.rightsUrls, "Rights evidence")}</section>
+      <section className="rights-verdict"><div><small>CURRENT U.S. RIGHTS HOLDER</small><strong>{product.recommendedCompany}</strong></div><div><small>RIGHTS SITUATION</small><strong>{product.rightsClass === "Deal rule applied" ? "Transaction history identified" : "Current holder identified"}</strong></div></section>
+      <section className="detail-section"><span className="section-number">01 / HOLDER CONTEXT</span><h2>{product.recommendedCompany}</h2><p>{product.rightsFinding ?? product.rightsEvidence}</p></section>
+      <section className="detail-section"><span className="section-number">02 / CONTROL WINDOW</span><h2>{product.rightsDuration}</h2><p>{product.rightsDurationBasis}</p></section>
+      <section className="detail-section diligence-section"><span className="section-number">03 / NEXT MOVE</span><p>{product.nextDiligence}</p></section>
+      <details className="secondary-detail"><summary>Rights references <span>+</span></summary><div>{sourceLinks(product.rightsUrls, "Rights reference")}</div></details>
     </>
   );
 }
@@ -995,35 +1054,21 @@ function ProductDetail({ product }: { product: Product }) {
   );
 }
 
-function EvidenceDetail({ product }: { product: Product }) {
-  return (
-    <>
-      <section className="detail-section"><span className="section-number">01 / REGULATORY SOURCE</span><h2>{product.regulatorySource}</h2><p>Snapshot dated {product.snapshotDate}. {product.marketStatus}</p>{sourceLinks(product.regulatoryUrls, "Regulatory source")}</section>
-      <section className="detail-section"><span className="section-number">02 / COMPANY BASIS</span><h2>{product.companyProxy}</h2><p>{product.companyBasis}</p>{product.secondaryPartner ? <KeyValue label="Verified secondary U.S. partner" value={product.secondaryPartner} /> : null}</section>
-      <section className="detail-section"><span className="section-number">03 / MOA SOURCE</span><p>{product.moaCoverage}</p>{sourceLinks(product.moaUrls, "MOA source")}</section>
-      <section className="detail-section"><span className="section-number">04 / DATA QUALITY</span><h2>{product.dataFlag}</h2><p>Record ID <code>{product.id}</code></p></section>
-    </>
-  );
-}
-
 function KeyValue({ label, value }: { label: string; value: unknown }) {
   return <div className="key-value"><span>{label}</span><strong>{displayValue(value)}</strong></div>;
 }
 
 function CompareDrawer({ products, onClose, onRemove, onOpenProduct }: { products: Product[]; onClose: () => void; onRemove: (id: string) => void; onOpenProduct: (id: string) => void }) {
   const rows: Array<[string, (product: Product) => unknown]> = [
-    ["Fit score", (product) => product.fitScore],
-    ["Recommendation", (product) => product.tier],
-    ["Therapy lens", (product) => product.therapyLens],
-    ["Rights company", (product) => product.recommendedCompany],
-    ["Rights basis", (product) => product.rightsClass],
-    ["Rights confidence", (product) => product.rightsConfidence],
-    ["Recent U.S. revenue", (product) => product.revenueDisplay],
-    ["Revenue evidence", (product) => product.revenueEvidenceType],
-    ["Route / form", (product) => product.commercialForm ?? product.dosageFormRoute],
-    ["First approval", (product) => product.approvalYear],
+    ["U.S. rights holder", (product) => product.recommendedCompany],
+    ["Annual sales", (product) => product.revenueDisplay],
+    ["Therapeutic area", (product) => product.therapyLens ?? product.modality],
+    ["Recommendation", (product) => product.tier ?? product.hlsStatus],
+    ["Strategic fit", (product) => product.fitScore],
+    ["Transaction signal", (product) => product.transactionSignal],
+    ["Commercial form", (product) => product.commercialForm ?? product.dosageFormRoute],
     ["Primary call points", (product) => product.primaryCallPoints],
-    ["Next rights diligence", (product) => product.nextDiligence],
+    ["Next move", (product) => product.nextDiligence],
   ];
   return (
     <div className="overlay compare-overlay" role="presentation" onMouseDown={onClose}>

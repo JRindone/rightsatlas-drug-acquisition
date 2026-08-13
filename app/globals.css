@@ -1,19 +1,19 @@
 :root {
   --font-geist-sans: Arial, Helvetica, sans-serif;
   --font-geist-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  --ink: #061412;
-  --ink-2: #0b211e;
-  --panel: #102b27;
-  --panel-2: #153631;
-  --panel-3: #1b403a;
-  --line: rgba(197, 225, 216, 0.14);
-  --line-strong: rgba(197, 225, 216, 0.26);
-  --text: #f2faf7;
-  --muted: #9cb5ad;
-  --faint: #6f8e85;
-  --mint: #4ee6c5;
-  --lime: #d3fb72;
-  --yellow: #f2bd57;
+  --ink: #0b0e0d;
+  --ink-2: #101412;
+  --panel: #151a17;
+  --panel-2: #1a211d;
+  --panel-3: #202823;
+  --line: rgba(234, 241, 236, 0.075);
+  --line-strong: rgba(234, 241, 236, 0.14);
+  --text: #f1f4f1;
+  --muted: #a4ada7;
+  --faint: #737d76;
+  --mint: #9fc5ae;
+  --lime: #bdd486;
+  --yellow: #d5b979;
   --red: #ff8d79;
   --blue: #65b8ff;
   --page-width: 1440px;
@@ -31,9 +31,7 @@ html {
 
 body {
   margin: 0;
-  background:
-    radial-gradient(circle at 100% 0%, rgba(78, 230, 197, 0.08), transparent 27rem),
-    var(--ink);
+  background: var(--ink);
   color: var(--text);
   font-family: var(--font-geist-sans), Arial, sans-serif;
   font-size: 15px;
@@ -2630,5 +2628,490 @@ main {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* Dealmaker-focused visual system */
+.topbar {
+  background: rgba(11, 14, 13, 0.92);
+}
+
+.brand-mark,
+.button,
+.icon-button,
+.icon-action,
+.decision-compare,
+.query-presets button,
+.filter-chip-grid button,
+.segmented-control button,
+.product-row,
+.target-card,
+.method-panel,
+.search-box,
+.metric,
+.compare-dock,
+.load-more {
+  border-radius: 9px;
+}
+
+.search-hero::before {
+  display: none;
+}
+
+.hero-copy h1,
+.priority-hero h1,
+.method-hero h1 {
+  font-size: clamp(38px, 7vw, 66px);
+  line-height: 1.02;
+  max-width: 840px;
+}
+
+.search-box {
+  background: var(--panel-2);
+  border: 1px solid var(--line-strong);
+  box-shadow: none;
+  color: var(--text);
+}
+
+.search-box input {
+  color: var(--text);
+}
+
+.search-box input::placeholder {
+  color: var(--faint);
+}
+
+.search-box button,
+.search-box kbd {
+  background: var(--panel-3);
+  color: var(--muted);
+}
+
+.query-presets span {
+  display: none;
+}
+
+.query-presets button:hover {
+  background: var(--panel);
+  border-color: var(--line-strong);
+}
+
+.metric-strip {
+  gap: 8px;
+  padding: 10px 16px;
+}
+
+.metric {
+  background: transparent;
+  border: 0;
+  flex-basis: 164px;
+  min-height: 78px;
+  padding: 13px 10px;
+}
+
+.metric strong {
+  font-size: 21px;
+}
+
+.metric.accent {
+  background: var(--panel);
+  color: var(--text);
+}
+
+.metric.accent span {
+  color: var(--faint);
+}
+
+.product-list {
+  border-top: 0;
+  display: grid;
+  gap: 7px;
+}
+
+.product-row {
+  background: rgba(255, 255, 255, 0.018);
+  border: 1px solid var(--line);
+  min-height: 0;
+}
+
+.product-row.strategic {
+  background: rgba(189, 212, 134, 0.045);
+}
+
+.product-main {
+  grid-template-columns: 28px minmax(0, 1fr) minmax(0, 1fr);
+  padding: 16px 8px;
+}
+
+.product-identity,
+.rights-holder-fact {
+  grid-column: 2 / -1;
+}
+
+.sales-fact {
+  grid-column: 2;
+}
+
+.therapy-fact {
+  grid-column: 3;
+}
+
+.deal-fact {
+  min-width: 0;
+}
+
+.deal-fact small,
+.deal-fact strong {
+  display: block;
+}
+
+.deal-fact small,
+.drawer-deal-grid small,
+.target-deal-facts small,
+.decision-holder small {
+  color: var(--faint);
+  font-size: 8px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.deal-fact strong {
+  font-size: 11px;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rights-holder-fact {
+  border-top: 1px solid var(--line);
+  padding-top: 11px;
+}
+
+.filter-group {
+  padding: 14px 0;
+}
+
+.deal-scope-control {
+  grid-template-columns: 1fr;
+  gap: 5px;
+}
+
+.sales-band-grid {
+  grid-template-columns: 1fr 1fr;
+}
+
+.more-filters {
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  padding: 13px 0;
+}
+
+.more-filters > summary,
+.secondary-detail > summary,
+.source-disclosure > summary {
+  align-items: center;
+  cursor: pointer;
+  display: flex;
+  font-size: 11px;
+  justify-content: space-between;
+  list-style: none;
+}
+
+.more-filters summary::-webkit-details-marker,
+.secondary-detail summary::-webkit-details-marker,
+.source-disclosure summary::-webkit-details-marker {
+  display: none;
+}
+
+.more-filters[open] > summary span,
+.secondary-detail[open] > summary span,
+.source-disclosure[open] > summary span {
+  transform: rotate(45deg);
+}
+
+.priority-hero aside {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--lime);
+  border-radius: 10px;
+  color: var(--text);
+}
+
+.priority-hero aside > span {
+  color: var(--lime);
+}
+
+.priority-hero aside p {
+  color: var(--muted);
+}
+
+.deal-summary {
+  border-bottom: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 10px 0;
+}
+
+.deal-summary > div {
+  padding: 14px 10px;
+}
+
+.deal-summary strong,
+.deal-summary span {
+  display: block;
+}
+
+.deal-summary strong {
+  font-size: 14px;
+}
+
+.deal-summary span {
+  color: var(--faint);
+  font-size: 9px;
+  margin-top: 3px;
+  text-transform: uppercase;
+}
+
+.target-card {
+  padding: 18px;
+}
+
+.target-area {
+  min-height: 0;
+}
+
+.target-deal-facts {
+  border-bottom: 1px solid var(--line);
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr 1fr;
+  padding: 15px 0;
+}
+
+.target-deal-facts span,
+.target-deal-facts strong {
+  display: block;
+}
+
+.target-deal-facts strong {
+  font-size: 11px;
+  line-height: 1.35;
+  margin-top: 4px;
+}
+
+.target-signal {
+  min-height: 112px;
+}
+
+.decision-main {
+  grid-template-columns: 26px minmax(0, 1fr) auto;
+  min-height: 106px;
+}
+
+.decision-holder {
+  grid-column: 2 / -1;
+}
+
+.decision-holder small,
+.decision-holder strong {
+  display: block;
+}
+
+.decision-holder strong {
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+.decision-revenue {
+  display: block;
+  grid-column: 3;
+  grid-row: 2;
+  text-align: right;
+}
+
+.decision-revenue small,
+.decision-revenue strong {
+  display: block;
+}
+
+.decision-revenue small {
+  color: var(--faint);
+  font-size: 8px;
+}
+
+.decision-revenue strong {
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+.method-panel {
+  background: rgba(255, 255, 255, 0.022);
+}
+
+.panel-number {
+  font-size: 18px;
+}
+
+.deal-lens-list > div {
+  border-top: 1px solid var(--line);
+  padding: 14px 0;
+}
+
+.deal-lens-list strong {
+  font-size: 12px;
+}
+
+.deal-lens-list p,
+.caveat-panel > p {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
+  margin: 5px 0 0;
+}
+
+.caveat-panel {
+  background: var(--panel-2);
+  color: var(--text);
+}
+
+.caveat-panel .eyebrow {
+  color: var(--mint);
+}
+
+.caveat-panel .panel-number {
+  color: var(--line-strong);
+}
+
+.drawer-header {
+  background: var(--panel);
+}
+
+.drawer-deal-grid {
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 14px 12px;
+  grid-template-columns: 1fr 1fr;
+  margin-top: 22px;
+  padding-top: 18px;
+}
+
+.drawer-deal-grid strong {
+  display: block;
+  font-size: 12px;
+  line-height: 1.35;
+  margin-top: 4px;
+}
+
+.secondary-detail {
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  padding: 21px 0;
+}
+
+.secondary-detail > div {
+  padding-top: 16px;
+}
+
+.secondary-detail h3 {
+  color: var(--text);
+  margin: 0 0 8px;
+}
+
+.secondary-detail p {
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.source-disclosure {
+  border-top: 1px solid var(--line);
+  margin-top: 14px;
+  padding-top: 13px;
+}
+
+@media (min-width: 700px) {
+  .metric-strip {
+    padding-left: 28px;
+    padding-right: 28px;
+  }
+
+  .metric {
+    padding-left: 14px;
+  }
+
+  .product-main {
+    grid-template-columns: 34px minmax(0, 1fr) minmax(0, 1fr) 46px 20px;
+  }
+
+  .product-identity,
+  .rights-holder-fact {
+    grid-column: 2 / -1;
+  }
+
+  .sales-fact {
+    grid-column: 2;
+  }
+
+  .therapy-fact {
+    grid-column: 3;
+  }
+
+  .rights-holder-fact {
+    border-top: 0;
+    padding-top: 0;
+  }
+
+  .product-main > .fit-score {
+    grid-column: 4;
+  }
+
+  .product-main > .row-arrow {
+    grid-column: 5;
+  }
+
+  .deal-summary {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .deal-summary > div + div {
+    border-left: 1px solid var(--line);
+  }
+}
+
+@media (min-width: 1000px) {
+  .product-main {
+    grid-template-columns: 34px minmax(110px, .9fr) minmax(120px, 1fr) 95px minmax(100px, .8fr) 40px 18px;
+  }
+
+  .product-identity,
+  .rights-holder-fact,
+  .sales-fact,
+  .therapy-fact,
+  .product-main > .fit-score,
+  .product-main > .row-arrow {
+    grid-column: auto;
+  }
+
+  .top-targets {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .decision-main {
+    grid-template-columns: 38px minmax(130px, .7fr) minmax(160px, .9fr) minmax(145px, .8fr) 120px 105px 20px;
+  }
+
+  .decision-holder,
+  .decision-revenue {
+    grid-column: auto;
+    grid-row: auto;
+  }
+}
+
+@media (min-width: 1300px) {
+  .top-targets {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .product-main {
+    grid-template-columns: 38px minmax(190px, 1fr) minmax(210px, 1.05fr) minmax(150px, .75fr) minmax(185px, .9fr) 50px 20px;
   }
 }

@@ -1,16 +1,16 @@
 # RightsAtlas
 
-RightsAtlas is a mobile-first U.S. drug-product acquisition review workspace. It turns a public-source FDA and commercial-rights screen into a fast, traceable workflow for finding targets, comparing assets, recording diligence notes, and exporting working sets.
+RightsAtlas is a mobile-first deal workspace for finding and reviewing U.S. drug assets. It brings rights holders, annual sales, therapeutic fit, transaction signals, and next actions into one focused acquisition workflow.
 
 ## What is included
 
-- Search and filters across 1,605 screened products
-- A 12-asset focused acquisition priority stack
-- Regulatory, commercial-rights, mechanism, source, and diligence detail
+- Ranked deal flow with rights holder, annual sales, and therapeutic area upfront
+- Search and commercial filters across 1,605 screened products
+- A 12-asset acquisition shortlist with strategic fit and transaction signals
 - Side-by-side comparison for up to three products
-- Device-local review status and analyst notes
+- Device-local deal status and working notes
 - Shareable URL state and filtered CSV export
-- Transparent scoring methodology and public-source registry
+- A compact explanation of the acquisition criteria
 
 ## Data scope
 
