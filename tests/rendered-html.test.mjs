@@ -14,32 +14,32 @@ async function render() {
   );
 }
 
-test("server-renders the RightsAtlas application shell and deal-focused metadata", async () => {
+test("server-renders the Cohaddy Bio strategy shell and metadata", async () => {
   const response = await render();
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
 
   const html = await response.text();
-  assert.match(html, /<title>RightsAtlas \| Find the Next Drug Asset<\/title>/i);
-  assert.match(html, /rights holder, annual sales, therapeutic fit/i);
-  assert.match(html, /RightsAtlas/);
-  assert.match(html, /OPENING DEAL WORKSPACE/);
-  assert.match(html, /Assembling the asset opportunity set/);
+  assert.match(html, /<title>Cohaddy Bio \| Asset Strategy<\/title>/i);
+  assert.match(html, /two acquisition strategies/i);
+  assert.match(html, /Cohaddy Bio/);
+  assert.match(html, /Preparing the strategy room/);
 });
 
 test("keeps the two publishing targets aligned", async () => {
-  const [externalHtml, layout, app] = await Promise.all([
+  const [externalHtml, layout, app, catalog] = await Promise.all([
     readFile(new URL("../external/index.html", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/AcquisitionApp.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../public/data/catalog.json", import.meta.url), "utf8"),
   ]);
 
   for (const source of [externalHtml, layout]) {
-    assert.match(source, /RightsAtlas \| Find the Next Drug Asset/);
-    assert.match(source, /rights holder, annual sales, therapeutic fit/i);
+    assert.match(source, /Cohaddy Bio \| Asset Strategy/);
+    assert.match(source, /rights holder, annual sales, call points/i);
   }
-  assert.match(app, /Find the next asset HLS can actually win/);
-  assert.match(app, /U\.S\. rights holder/);
-  assert.match(app, /Annual sales/);
-  assert.match(app, /Therapeutic area/);
+  assert.match(app, /Current platform/);
+  assert.match(app, /Prescribing info/);
+  assert.match(catalog, /"strategyRecords":40/);
+  assert.match(catalog, /Acquire into today’s call points/);
 });
