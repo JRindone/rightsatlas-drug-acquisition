@@ -255,26 +255,17 @@ h3 {
 }
 
 .situation-copy {
-  display: grid;
-  gap: 14px;
   max-width: 960px;
 }
 
 .situation-copy p {
   color: var(--muted);
   font-size: 17px;
-  margin: 0;
+  margin: 0 0 14px;
 }
 
-.options-lead {
-  color: var(--text);
-  font-size: 15px;
-  font-weight: 800;
-  margin: 30px 0 13px;
-}
-
-.situation-choices {
-  max-width: 1060px;
+.situation-copy p:last-child {
+  margin-bottom: 0;
 }
 
 .screening-funnel {
@@ -312,11 +303,6 @@ h3 {
 .funnel-start {
   max-width: 820px;
   width: 100%;
-}
-
-.funnel-finalists {
-  max-width: 360px;
-  width: 72%;
 }
 
 .funnel-flow {
@@ -382,47 +368,38 @@ h3 {
 .funnel-filters span:nth-child(4) { width: 67%; }
 
 .funnel-split {
-  height: 48px;
-  max-width: 620px;
-  position: relative;
-  width: 78%;
-}
-
-.funnel-split::before {
   background: var(--line-strong);
-  content: "";
-  height: 1px;
-  left: 0;
-  position: absolute;
-  right: 0;
-  top: 50%;
+  height: 32px;
+  position: relative;
+  width: 1px;
 }
 
 .funnel-split i,
 .funnel-split span {
-  background: var(--line-strong);
-  position: absolute;
-  width: 1px;
+  display: none;
 }
 
-.funnel-split i {
-  left: 50%;
-  top: 0;
-  height: 50%;
+.strategy-instruction {
+  background: rgba(126, 211, 189, 0.08);
+  border: 1px solid rgba(126, 211, 189, 0.2);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+  margin: 0 0 14px;
+  max-width: 760px;
+  padding: 11px 14px;
+  text-align: center;
+  width: 100%;
 }
 
-.funnel-split span {
-  bottom: 0;
-  height: 50%;
+.strategy-instruction strong {
+  color: var(--accent);
 }
-
-.funnel-split span:first-child { left: 0; }
-.funnel-split span:last-child { right: 0; }
 
 .funnel-outcomes {
   display: grid;
   gap: 10px;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   max-width: 760px;
   width: 100%;
 }
@@ -431,8 +408,9 @@ h3 {
   background: var(--panel);
   border: 1px solid var(--line-strong);
   cursor: pointer;
-  min-height: 112px;
-  padding: 15px 10px;
+  min-height: 164px;
+  padding: 18px 16px;
+  text-align: left;
 }
 
 .funnel-outcomes button.active {
@@ -448,21 +426,21 @@ h3 {
 
 .funnel-outcomes span {
   color: var(--teal);
-  font-size: 9px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.04em;
 }
 
 .funnel-outcomes strong {
-  color: var(--accent);
-  font-size: 28px;
+  color: var(--text);
+  font-size: 19px;
   line-height: 1.1;
-  margin: 7px 0 4px;
+  margin: 11px 0 9px;
 }
 
 .funnel-outcomes small {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .funnel-overlap {
@@ -474,43 +452,6 @@ h3 {
 
 .funnel-overlap strong {
   color: var(--text);
-}
-
-.active-option {
-  align-items: start;
-  background: var(--panel);
-  border: 1px solid var(--line-strong);
-  display: grid;
-  gap: 24px;
-  padding: 24px;
-}
-
-.active-option h2 {
-  font-size: clamp(27px, 5.5vw, 42px);
-  margin-bottom: 12px;
-}
-
-.active-option p:not(.eyebrow) {
-  color: var(--muted);
-  margin: 0;
-  max-width: 720px;
-}
-
-.active-option-actions {
-  align-items: stretch;
-  display: grid;
-  gap: 12px;
-}
-
-.active-option-actions > span {
-  color: var(--faint);
-  display: grid;
-  font-size: 11px;
-}
-
-.active-option-actions > span strong {
-  color: var(--text);
-  font-size: 15px;
 }
 
 .decision-hero {
@@ -1709,22 +1650,12 @@ h3 {
     flex-direction: row;
   }
 
-  .situation-copy {
-    grid-template-columns: 1fr 1fr;
-  }
-
   .situation-copy p {
     font-size: 18px;
   }
 
   .screening-funnel {
     padding: 38px 28px 28px;
-  }
-
-  .active-option {
-    align-items: end;
-    grid-template-columns: minmax(0, 1fr) auto;
-    padding: 30px;
   }
 
   .section-heading > p {

@@ -108,6 +108,11 @@ const VIEW_LABELS: Record<View, string> = {
   saved: "Saved",
 };
 
+const STRATEGY_NAMES: Record<StrategyKey, string> = {
+  core: "Option 1 - Current platform",
+  specialty: "Option 2 - New specialty platform",
+};
+
 const WEIGHT_LEVEL: Record<string, number> = {
   "Very high": 4,
   High: 3,
@@ -171,7 +176,7 @@ function StrategyToggle({ value, onChange }: { value: StrategyKey; onChange: (ne
       </button>
       <button className={value === "specialty" ? "active" : ""} onClick={() => onChange("specialty")}>
         <span>Option 2</span>
-        New specialty team
+        New specialty platform
       </button>
     </div>
   );
@@ -206,36 +211,20 @@ function SituationView({
   catalog,
   strategyKey,
   onStrategyChange,
-  onOpenTargets,
 }: {
   catalog: Catalog;
   strategyKey: StrategyKey;
   onStrategyChange: (strategy: StrategyKey) => void;
-  onOpenTargets: () => void;
 }) {
-  const strategy = catalog.strategies[strategyKey];
-  const targets = catalog.targets[strategyKey];
-  const top = targets[0];
-
   return (
     <div className="view-stack">
       <section className="situation-intro">
         <p className="eyebrow">CEO decision frame</p>
         <h1>Current situation</h1>
         <div className="situation-copy">
-          <p>Cohaddy Bio is an established life sciences company with marketed products in cardiology and psychiatry. Field teams primarily call on PCPs and supporting staff, with selective reach into cardiology and endocrinology.</p>
+          <p>Cohaddy Bio is an established life sciences company with marketed products in cardiology and psychiatry.</p>
+          <p>Field teams primarily call on PCPs and supporting staff, with selective reach into cardiology and endocrinology.</p>
           <p>Under experienced leadership, Cohaddy recently stabilized its balance sheet and is positioned to increase EBITDA and enterprise value by acquiring a U.S. commercial asset or its rights.</p>
-        </div>
-        <p className="options-lead">Two independent options exist:</p>
-        <div className="choice-grid situation-choices">
-          {(Object.keys(catalog.strategies) as StrategyKey[]).map((key) => (
-              <button key={key} className={`choice-card ${strategyKey === key ? "active" : ""}`} onClick={() => onStrategyChange(key)}>
-                <span>{key === "core" ? "Option 1 · Lower build" : "Option 2 · New platform"}</span>
-                <strong>{key === "core" ? "Acquire into current call points" : "Build a focused specialty team"}</strong>
-                <small>{key === "core" ? "Use existing PCP, staff, cardiology and psychiatry reach; add only missing specialist capacity." : "Stand up dedicated field, medical, access and patient-support capabilities around a coherent franchise."}</small>
-                <em>{strategyKey === key ? "Active across the app" : "Switch strategy"} →</em>
-              </button>
-          ))}
         </div>
       </section>
 
@@ -257,32 +246,17 @@ function SituationView({
             <span>Call-point or specialty-platform fit</span>
           </div>
           <div className="funnel-flow compact" aria-hidden="true"><i /><i /></div>
-          <div className="funnel-node funnel-finalists">
-            <strong>25</strong>
-            <span>unique priority assets</span>
-          </div>
           <div className="funnel-split" aria-hidden="true"><span /><i /><span /></div>
+          <p className="strategy-instruction"><strong>Two independent options exist.</strong> Click a strategy to view its scoring weights, operating model and ranked results across the app.</p>
           <div className="funnel-outcomes">
             <button className={strategyKey === "core" ? "active" : ""} onClick={() => onStrategyChange("core")}>
-              <span>Option 1</span><strong>Top 20</strong><small>Current call points</small>
+              <span>{STRATEGY_NAMES.core}</span><strong>Acquire into current call points</strong><small>Use existing PCP, staff, cardiology and psychiatry reach; add only missing specialist capacity.</small>
             </button>
             <button className={strategyKey === "specialty" ? "active" : ""} onClick={() => onStrategyChange("specialty")}>
-              <span>Option 2</span><strong>Top 20</strong><small>New specialty team</small>
+              <span>{STRATEGY_NAMES.specialty}</span><strong>Build a focused specialty team</strong><small>Stand up dedicated field, medical, access and patient-support capabilities around a coherent franchise.</small>
             </button>
           </div>
           <p className="funnel-overlap"><strong>15</strong> assets appear in both lists and are scored separately.</p>
-        </div>
-      </section>
-
-      <section className="active-option">
-        <div>
-          <p className="eyebrow">{strategy.eyebrow}</p>
-          <h2>{strategy.title}</h2>
-          <p>{strategy.description}</p>
-        </div>
-        <div className="active-option-actions">
-          <span><strong>#{top.rank} {top.asset}</strong>{top.score} fit score</span>
-          <button className="button primary" onClick={onOpenTargets}>Review Top 20 <ArrowIcon /></button>
         </div>
       </section>
 
@@ -437,7 +411,7 @@ function TargetsView({
   return (
     <div className="view-stack">
       <section className="page-intro compact">
-        <div><p className="eyebrow">Active strategy</p><h1>{strategy.shortTitle} targets</h1><p>{strategy.description}</p></div>
+        <div><p className="eyebrow">Active strategy</p><h1>{STRATEGY_NAMES[targets[0]?.strategy ?? "core"]} targets</h1><p>{strategy.description}</p></div>
         <div className="intro-stat"><strong>{filtered.length}</strong><span>of 20 assets</span></div>
       </section>
       <section className="target-tools">
@@ -522,7 +496,6 @@ function DatabaseView({ catalog, strategyKey, onViewTarget }: { catalog: Catalog
 
 function SavedView({
   targets,
-  strategy,
   savedIds,
   compareIds,
   onOpen,
@@ -531,7 +504,6 @@ function SavedView({
   onBrowse,
 }: {
   targets: Target[];
-  strategy: Strategy;
   savedIds: string[];
   compareIds: string[];
   onOpen: (id: string) => void;
@@ -543,7 +515,7 @@ function SavedView({
   return (
     <div className="view-stack">
       <section className="page-intro compact">
-        <div><p className="eyebrow">Active strategy</p><h1>Saved · {strategy.shortTitle}</h1><p>Keep the decision set tight.</p></div>
+        <div><p className="eyebrow">Active strategy</p><h1>Saved · {STRATEGY_NAMES[targets[0]?.strategy ?? "core"]}</h1><p>Keep the decision set tight.</p></div>
         <div className="intro-stat"><strong>{saved.length}</strong><span>saved assets</span></div>
       </section>
       {saved.length ? (
@@ -725,7 +697,7 @@ export function AcquisitionApp() {
     setSelectedTargetId(null);
     setCompareOpen(false);
     setStrategyKey(next);
-    setToast(next === "core" ? "Option 1 active" : "Option 2 active");
+    setToast(`${STRATEGY_NAMES[next]} selected`);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -780,10 +752,10 @@ export function AcquisitionApp() {
       </header>
 
       <main className="page-shell">
-        {view === "situation" && <SituationView catalog={catalog} strategyKey={strategyKey} onStrategyChange={changeStrategy} onOpenTargets={() => changeView("targets")} />}
+        {view === "situation" && <SituationView catalog={catalog} strategyKey={strategyKey} onStrategyChange={changeStrategy} />}
         {view === "targets" && <TargetsView targets={targets} strategy={strategy} savedIds={savedIds} compareIds={activeCompareIds} onOpen={setSelectedTargetId} onSave={toggleSaved} onCompare={toggleCompare} />}
         {view === "database" && <DatabaseView catalog={catalog} strategyKey={strategyKey} onViewTarget={viewTarget} />}
-        {view === "saved" && <SavedView targets={targets} strategy={strategy} savedIds={savedIds} compareIds={activeCompareIds} onOpen={setSelectedTargetId} onSave={toggleSaved} onCompare={toggleCompare} onBrowse={() => changeView("targets")} />}
+        {view === "saved" && <SavedView targets={targets} savedIds={savedIds} compareIds={activeCompareIds} onOpen={setSelectedTargetId} onSave={toggleSaved} onCompare={toggleCompare} onBrowse={() => changeView("targets")} />}
       </main>
 
       {activeCompareIds.length > 0 && (
