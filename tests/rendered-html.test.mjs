@@ -27,10 +27,11 @@ test("server-renders the original specialty strategy shell and metadata", async 
 });
 
 test("keeps the two publishing targets aligned", async () => {
-  const [externalHtml, layout, app, router, catalog] = await Promise.all([
+  const [externalHtml, layout, app, strategyApp, router, catalog] = await Promise.all([
     readFile(new URL("../external/index.html", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/AssetScreenerApp.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/AcquisitionApp.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/AppRouter.tsx", import.meta.url), "utf8"),
     readFile(new URL("../public/data/catalog.json", import.meta.url), "utf8"),
   ]);
@@ -46,6 +47,9 @@ test("keeps the two publishing targets aligned", async () => {
   assert.match(app, /Export CSV/);
   assert.match(app, /Back to original version/);
   assert.doesNotMatch(app, /Cohaddy/i);
+  assert.match(strategyApp, /Shared corporate infrastructure/);
+  assert.match(strategyApp, /Platform coherence/);
+  assert.match(strategyApp, /Calculated from/);
   assert.match(router, /tool.*asset-screener/);
   assert.match(router, /PreviousVersion/);
   assert.match(router, /Open US Specialty Asset Screener/);

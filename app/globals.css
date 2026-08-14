@@ -764,14 +764,19 @@ button.funnel-node {
 }
 
 .weight-row {
-  align-items: center;
   background: transparent;
   border: 0;
   border-bottom: 1px solid var(--line);
   display: grid;
   gap: 14px;
-  grid-template-columns: minmax(0, 1fr) auto;
   padding: 16px 2px;
+}
+
+.weight-summary {
+  align-items: center;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(0, 1fr) auto;
 }
 
 .weight-row strong,
@@ -802,6 +807,34 @@ button.funnel-node {
 
 .weight-meter i.filled {
   background: var(--accent);
+}
+
+.criterion-definition {
+  border-top: 1px solid var(--line);
+  padding-top: 11px;
+}
+
+.criterion-definition p {
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 0 0 8px;
+}
+
+.criterion-definition small {
+  color: var(--muted);
+  display: block;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.criterion-definition b {
+  color: var(--accent);
+  display: block;
+  font-size: 9px;
+  letter-spacing: 0.09em;
+  margin-bottom: 3px;
+  text-transform: uppercase;
 }
 
 .operating-grid,

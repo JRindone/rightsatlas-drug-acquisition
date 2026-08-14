@@ -117,6 +117,45 @@ const WEIGHT_LEVEL: Record<string, number> = {
   Low: 1,
 };
 
+const CRITERIA_DEFINITIONS: Record<string, { definition: string; calculation: string }> = {
+  "Therapy-area alignment": {
+    definition: "How closely the asset matches Cohaddy's expertise or a deliberate specialty-market thesis.",
+    calculation: "Indication fit with cardiology, psychiatry or a clearly defined specialty platform.",
+  },
+  "Existing call-point leverage": {
+    definition: "How much of the prescriber network can be reached through existing field relationships.",
+    calculation: "Overlap with PCP, office staff, cardiology and endocrinology call points.",
+  },
+  "Concentrated specialist universe": {
+    definition: "Whether a focused national team can cover the relevant prescribers and centers.",
+    calculation: "Higher for fewer, identifiable specialist accounts; lower for broad, diffuse markets.",
+  },
+  "Shared corporate infrastructure": {
+    definition: "How much of the new business can reuse existing company functions instead of being rebuilt.",
+    calculation: "Reuse of finance, legal, compliance, regulatory, safety, HR, IT, distribution and analytics; dedicated field, medical, access and patient-support needs remain incremental.",
+  },
+  "Commercial-model complexity": {
+    definition: "The specialized operating burden required to sell and support the product.",
+    calculation: "Device or procedure training, site of care, reimbursement, market access, patient services, specialty pharmacy and medical-education needs.",
+  },
+  "Revenue ceiling": {
+    definition: "A transaction-size and operating-scale screen based on recent annual U.S. product sales.",
+    calculation: "Assets at roughly $100m or less pass the target range; reported sales or a screening estimate is used.",
+  },
+  "Transaction signal / owner feasibility": {
+    definition: "Evidence that a rights deal, partnership or carve-out may be actionable.",
+    calculation: "Public partnering language, reduced promotion, a commercial reset, small owner or non-core status raise the assessment.",
+  },
+  "Platform coherence": {
+    definition: "Whether the first asset can anchor a second asset using the same specialty organization.",
+    calculation: "Overlap in prescribers, territories, MSL coverage, market access, patient support and operating infrastructure.",
+  },
+  "Owner availability": {
+    definition: "The estimated likelihood that the current rights holder would consider a transaction.",
+    calculation: "Owner strategy, product priority, investment level, portfolio fit, public statements and carve-out complexity.",
+  },
+};
+
 function money(value: number | null) {
   if (value === null || Number.isNaN(value)) return "Not profiled";
   if (value < 1) return `$${value.toFixed(1)}m`;
@@ -288,18 +327,25 @@ function SituationView({ catalog, onOpenTargets, onOpenDatabase }: { catalog: Ca
       <section className="section-block">
         <div className="section-heading">
           <div><p className="eyebrow">Decision model</p><h2>Criteria and relative weights</h2></div>
-          <p>Weights favor a compact, coherent specialty platform.</p>
+          <p>Qualitative weights favor a compact, coherent specialty platform.</p>
         </div>
         <div className="weights-grid">
           {catalog.methodology.map((item) => {
             const value = item.specialty;
             const level = WEIGHT_LEVEL[value] ?? 3;
+            const details = CRITERIA_DEFINITIONS[item.dimension];
             return (
               <article className="weight-row" key={item.dimension}>
-                <div><strong>{item.dimension}</strong><span>{value.replace("Target approximately ", "")}</span></div>
-                <div className="weight-meter" aria-label={`${item.dimension}: ${value}`}>
-                  {[1, 2, 3, 4].map((step) => <i key={step} className={step <= level ? "filled" : ""} />)}
+                <div className="weight-summary">
+                  <div><strong>{item.dimension}</strong><span>{value.replace("Target approximately ", "")}</span></div>
+                  <div className="weight-meter" aria-label={`${item.dimension}: ${value}`}>
+                    {[1, 2, 3, 4].map((step) => <i key={step} className={step <= level ? "filled" : ""} />)}
+                  </div>
                 </div>
+                {details && <div className="criterion-definition">
+                  <p>{details.definition}</p>
+                  <small><b>Calculated from</b>{details.calculation}</small>
+                </div>}
               </article>
             );
           })}
