@@ -662,6 +662,22 @@
   z-index: 100;
 }
 
+.asset-screener-link {
+  background: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  bottom: 88px;
+  color: #152231;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 10px;
+  font-weight: 800;
+  left: 16px;
+  letter-spacing: 0.035em;
+  padding: 10px 12px;
+  position: fixed;
+  text-decoration: none;
+  z-index: 90;
+}
+
 @media (max-width: 680px) {
   .screener-header {
     align-items: flex-start;
@@ -756,6 +772,13 @@
   .criteria-panel {
     position: sticky;
     top: 88px;
+  }
+
+  .asset-screener-link {
+    bottom: auto;
+    left: auto;
+    right: 28px;
+    top: 92px;
   }
 }
 

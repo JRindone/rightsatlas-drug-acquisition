@@ -240,7 +240,7 @@ export function AssetScreenerApp() {
         </a>
         <nav>
           <button className={shortlistOnly ? "active" : ""} onClick={() => setShortlistOnly((value) => !value)}>Shortlist <b>{shortlist.length}</b></button>
-          <a href="?version=previous">Open previous version</a>
+          <a href="./">Back to original version</a>
         </nav>
       </header>
 

@@ -1,8 +1,8 @@
-# US Specialty Asset Screener
+# Cohaddy Bio Specialty Platform
 
-A mobile-first business tool for screening the U.S. specialty-product universe. Users define hard filters and ranking weights, review business-oriented product records, build a device-local shortlist and export results.
+A mobile-first CEO workspace for acquiring a differentiated U.S. commercial asset and building a dedicated specialty team around a coherent multi-asset platform.
 
-The searchable universe contains 1,605 commercial products. The previous specialty strategy experience remains available at `?version=previous`.
+The original specialty strategy is the primary experience. A configurable screener for the full 1,605-product universe remains available at `?tool=asset-screener`.
 
 ## Run locally
 

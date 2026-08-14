@@ -14,15 +14,16 @@ async function render() {
   );
 }
 
-test("server-renders the US specialty asset screener shell and metadata", async () => {
+test("server-renders the original specialty strategy shell and metadata", async () => {
   const response = await render();
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
 
   const html = await response.text();
-  assert.match(html, /<title>Asset Screener \| US Specialty Markets<\/title>/i);
-  assert.match(html, /Define acquisition criteria/i);
-  assert.match(html, /Loading asset universe/);
+  assert.match(html, /<title>Cohaddy Bio \| Build a Specialty Team<\/title>/i);
+  assert.match(html, /Cohaddy Bio/i);
+  assert.match(html, /Preparing the strategy room/);
+  assert.match(html, /Open US Specialty Asset Screener/);
 });
 
 test("keeps the two publishing targets aligned", async () => {
@@ -35,18 +36,19 @@ test("keeps the two publishing targets aligned", async () => {
   ]);
 
   for (const source of [externalHtml, layout]) {
-    assert.match(source, /Asset Screener \| US Specialty Markets/);
-    assert.match(source, /rank 1,605 U\.S\. commercial drug products/i);
+    assert.match(source, /Cohaddy Bio \| Build a Specialty Team/);
+    assert.match(source, /rights holder, annual sales, call points/i);
   }
   assert.match(app, /US specialty markets/);
   assert.match(app, /Priority keywords/);
   assert.match(app, /Annual sales screen/);
   assert.match(app, /Ranking weights/);
   assert.match(app, /Export CSV/);
-  assert.match(app, /Open previous version/);
+  assert.match(app, /Back to original version/);
   assert.doesNotMatch(app, /Cohaddy/i);
-  assert.match(router, /version.*previous/);
+  assert.match(router, /tool.*asset-screener/);
   assert.match(router, /PreviousVersion/);
+  assert.match(router, /Open US Specialty Asset Screener/);
   assert.match(catalog, /"strategyRecords":40/);
   assert.match(catalog, /Build a focused specialty franchise/);
 });
