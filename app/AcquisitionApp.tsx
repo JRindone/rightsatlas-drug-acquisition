@@ -141,7 +141,7 @@ const VIEW_LABELS: Record<View, string> = {
   situation: "Current situation",
   targets: "Targets",
   database: "Database",
-  deals: "Deal benchmarks",
+  deals: "Deals",
   saved: "Saved",
 };
 
@@ -679,10 +679,10 @@ function DealBenchmarksView({ catalog }: { catalog: DealBenchmarkCatalog }) {
         : b.date.localeCompare(a.date));
   }, [catalog, query, structure, year, sort]);
 
-  const licenseUpfronts = catalog.deals
+  const rightsDealUpfronts = catalog.deals
     .filter((deal) => /license|asset purchase/i.test(deal.structure) && deal.guaranteedUsdMm !== null)
     .map((deal) => deal.guaranteedUsdMm as number);
-  const medianLicenseUpfront = median(licenseUpfronts);
+  const medianRightsUpfront = median(rightsDealUpfronts);
   const marketed = catalog.deals.filter((deal) => /marketed/i.test(deal.stage)).length;
   const backEnded = catalog.deals.filter((deal) => (deal.contingentUsdMm ?? 0) > 0 || !/^none/i.test(deal.royalty)).length;
 
@@ -696,7 +696,7 @@ function DealBenchmarksView({ catalog }: { catalog: DealBenchmarkCatalog }) {
       <section className="deal-summary" aria-label="Benchmark summary">
         <article><span>Transactions</span><strong>{catalog.deals.length}</strong><small>public benchmarks</small></article>
         <article><span>Marketed at signing</span><strong>{marketed}</strong><small>commercial precedents</small></article>
-        <article><span>Median license upfront</span><strong>{dealMoney(medianLicenseUpfront)}</strong><small>disclosed U.S./global licenses</small></article>
+        <article><span>Median rights-deal upfront</span><strong>{dealMoney(medianRightsUpfront)}</strong><small>licenses and asset purchases</small></article>
         <article><span>Back-ended structures</span><strong>{backEnded}</strong><small>milestones, CVRs or royalties</small></article>
       </section>
 
@@ -725,7 +725,16 @@ function DealBenchmarksView({ catalog }: { catalog: DealBenchmarkCatalog }) {
               <span className={`deal-status ${deal.status.toLowerCase().includes("terminat") ? "terminated" : ""}`}>{deal.status}</span>
             </div>
 
-            <div className="deal-tags"><span>{deal.therapyArea}</span><span>{deal.stage}</span></div>
+            <div className="deal-tags">
+              <span>{deal.therapyArea}</span>
+              <span>{deal.stage}</span>
+              {deal.salesAtDealUsdMm !== null && (
+                <span>
+                  {dealMoney(deal.salesAtDealUsdMm)} sales at signing
+                  {deal.guaranteedUsdMm !== null ? ` · ${(deal.guaranteedUsdMm / deal.salesAtDealUsdMm).toFixed(1)}× guaranteed value` : ""}
+                </span>
+              )}
+            </div>
 
             <div className="deal-economics">
               <div><span>Guaranteed</span><strong>{deal.guaranteedDisplay}</strong></div>

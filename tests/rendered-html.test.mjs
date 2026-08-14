@@ -27,7 +27,7 @@ test("server-renders the original specialty strategy shell and metadata", async 
 });
 
 test("keeps the two publishing targets aligned", async () => {
-  const [externalHtml, layout, app, strategyApp, diligence, commercialModels, router, catalog] = await Promise.all([
+  const [externalHtml, layout, app, strategyApp, diligence, commercialModels, router, catalog, dealBenchmarks] = await Promise.all([
     readFile(new URL("../external/index.html", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/AssetScreenerApp.tsx", import.meta.url), "utf8"),
@@ -36,6 +36,7 @@ test("keeps the two publishing targets aligned", async () => {
     readFile(new URL("../app/commercialModels.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/AppRouter.tsx", import.meta.url), "utf8"),
     readFile(new URL("../public/data/catalog.json", import.meta.url), "utf8"),
+    readFile(new URL("../public/data/deal-benchmarks.json", import.meta.url), "utf8"),
   ]);
 
   for (const source of [externalHtml, layout]) {
@@ -65,9 +66,16 @@ test("keeps the two publishing targets aligned", async () => {
   assert.match(strategyApp, /Modeled standalone U\.S\. team/);
   assert.match(strategyApp, /Observed evidence/);
   assert.match(strategyApp, /Estimation method/);
+  assert.match(strategyApp, /U\.S\. specialty deal benchmarks/);
+  assert.match(strategyApp, /Export.*rows/);
   assert.match(router, /tool.*asset-screener/);
   assert.match(router, /PreviousVersion/);
   assert.match(router, /Open US Specialty Asset Screener/);
   assert.match(catalog, /"strategyRecords":40/);
   assert.match(catalog, /Build a focused specialty franchise/);
+  const deals = JSON.parse(dealBenchmarks);
+  assert.equal(deals.deals.length, 34);
+  assert.ok(deals.deals.every((deal) => deal.sourceUrl && deal.rightsScope && deal.insight));
+  assert.ok(deals.deals.some((deal) => deal.structure === "Royalty monetization"));
+  assert.ok(deals.deals.some((deal) => deal.status.includes("Terminated")));
 });
