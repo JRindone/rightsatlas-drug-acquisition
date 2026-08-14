@@ -5,7 +5,7 @@ import { COMMERCIAL_MODELS, teamTotal, type CommercialModel } from "./commercial
 import { TOP20_DILIGENCE, type AssetDiligence } from "./diligence";
 
 type StrategyKey = "core" | "specialty";
-type View = "situation" | "targets" | "database" | "saved";
+type View = "situation" | "targets" | "database" | "deals" | "saved";
 
 type Strategy = {
   eyebrow: string;
@@ -103,10 +103,45 @@ type Catalog = {
   universe: Product[];
 };
 
+type DealBenchmark = {
+  id: string;
+  date: string;
+  buyer: string;
+  seller: string;
+  asset: string;
+  therapyArea: string;
+  stage: string;
+  structure: string;
+  rightsScope: string;
+  guaranteedUsdMm: number | null;
+  guaranteedDisplay: string;
+  contingentUsdMm: number | null;
+  contingentDisplay: string;
+  headlineUsdMm: number | null;
+  royalty: string;
+  salesAtDealUsdMm: number | null;
+  economics: string;
+  insight: string;
+  status: string;
+  sourceLabel: string;
+  sourceUrl: string;
+};
+
+type DealBenchmarkCatalog = {
+  meta: {
+    title: string;
+    coverage: string;
+    updated: string;
+    method: string;
+  };
+  deals: DealBenchmark[];
+};
+
 const VIEW_LABELS: Record<View, string> = {
   situation: "Current situation",
   targets: "Targets",
   database: "Database",
+  deals: "Deal benchmarks",
   saved: "Saved",
 };
 
@@ -174,6 +209,36 @@ function short(value: string, limit = 180) {
   if (value.length <= limit) return value;
   const clipped = value.slice(0, limit);
   return `${clipped.slice(0, clipped.lastIndexOf(" "))}…`;
+}
+
+function dealMoney(value: number | null) {
+  if (value === null) return "Not disclosed";
+  if (value >= 1000) return `$${(value / 1000).toFixed(value % 1000 === 0 ? 0 : 1)}bn`;
+  return `$${Number.isInteger(value) ? value.toFixed(0) : value.toFixed(1)}m`;
+}
+
+function median(values: number[]) {
+  if (!values.length) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+}
+
+function csvCell(value: string | number | null) {
+  const text = value === null ? "" : String(value);
+  return `"${text.replace(/"/g, '""')}"`;
+}
+
+function exportDeals(deals: DealBenchmark[]) {
+  const headers = ["Date", "Asset", "Buyer", "Seller", "Therapy area", "Stage", "Structure", "Rights scope", "Guaranteed USD mm", "Contingent USD mm", "Headline USD mm", "Guaranteed terms", "Contingent terms", "Royalty / retained economics", "Sales at deal USD mm", "Other terms", "Benchmark implication", "Status", "Source"];
+  const rows = deals.map((deal) => [deal.date, deal.asset, deal.buyer, deal.seller, deal.therapyArea, deal.stage, deal.structure, deal.rightsScope, deal.guaranteedUsdMm, deal.contingentUsdMm, deal.headlineUsdMm, deal.guaranteedDisplay, deal.contingentDisplay, deal.royalty, deal.salesAtDealUsdMm, deal.economics, deal.insight, deal.status, deal.sourceUrl]);
+  const csv = [headers, ...rows].map((row) => row.map(csvCell).join(",")).join("\n");
+  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = "us-specialty-drug-deal-benchmarks.csv";
+  anchor.click();
+  URL.revokeObjectURL(url);
 }
 
 function callPointChips(value: string) {
@@ -277,11 +342,12 @@ function Nav({ view, onChange }: { view: View; onChange: (view: View) => void })
 }
 
 function MobileNav({ view, onChange, savedCount }: { view: View; onChange: (view: View) => void; savedCount: number }) {
+  const items = Object.keys(VIEW_LABELS) as View[];
   return (
     <nav className="mobile-nav" aria-label="Primary">
-      {(Object.keys(VIEW_LABELS) as View[]).map((item) => (
+      {items.map((item, index) => (
         <button key={item} className={view === item ? "active" : ""} onClick={() => onChange(item)}>
-          <span>{item === "saved" && savedCount ? savedCount : item === "situation" ? "01" : item === "targets" ? "02" : item === "database" ? "03" : "04"}</span>
+          <span>{item === "saved" && savedCount ? savedCount : String(index + 1).padStart(2, "0")}</span>
           {VIEW_LABELS[item]}
         </button>
       ))}
@@ -509,7 +575,7 @@ function TargetsView({
         <div className="intro-stat"><strong>{filtered.length}</strong><span>of 20 assets</span></div>
       </section>
       <section className="target-tools">
-        <label className="search-field"><SearchIcon /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search asset, holder, therapy or call point" /></label>
+        <label className="search-field"><SearchIcon /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search asset, holder, therapy or geography" /></label>
         <select value={platform} onChange={(event) => setPlatform(event.target.value)} aria-label="Platform filter">
           {platforms.map((item) => <option key={item}>{item}</option>)}
         </select>
@@ -587,6 +653,108 @@ function DatabaseView({ catalog, onViewTarget }: { catalog: Catalog; onViewTarge
         })}
       </section>
       {visible < filtered.length && <button className="button load-more" onClick={() => setVisible((count) => count + 48)}>Show 48 more</button>}
+    </div>
+  );
+}
+
+function DealBenchmarksView({ catalog }: { catalog: DealBenchmarkCatalog }) {
+  const [query, setQuery] = useState("");
+  const [structure, setStructure] = useState("All structures");
+  const [year, setYear] = useState("All years");
+  const [sort, setSort] = useState("newest");
+  const structures = useMemo(() => ["All structures", ...Array.from(new Set(catalog.deals.map((deal) => deal.structure))).sort()], [catalog]);
+  const years = useMemo(() => ["All years", ...Array.from(new Set(catalog.deals.map((deal) => deal.date.slice(0, 4)))).sort().reverse()], [catalog]);
+  const filtered = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    const matches = catalog.deals.filter((deal) => {
+      const haystack = [deal.asset, deal.buyer, deal.seller, deal.therapyArea, deal.stage, deal.structure, deal.rightsScope, deal.royalty, deal.economics, deal.insight].join(" ").toLowerCase();
+      return (structure === "All structures" || deal.structure === structure)
+        && (year === "All years" || deal.date.startsWith(year))
+        && (!needle || haystack.includes(needle));
+    });
+    return [...matches].sort((a, b) => sort === "guaranteed"
+      ? (b.guaranteedUsdMm ?? -1) - (a.guaranteedUsdMm ?? -1)
+      : sort === "headline"
+        ? (b.headlineUsdMm ?? -1) - (a.headlineUsdMm ?? -1)
+        : b.date.localeCompare(a.date));
+  }, [catalog, query, structure, year, sort]);
+
+  const licenseUpfronts = catalog.deals
+    .filter((deal) => /license|asset purchase/i.test(deal.structure) && deal.guaranteedUsdMm !== null)
+    .map((deal) => deal.guaranteedUsdMm as number);
+  const medianLicenseUpfront = median(licenseUpfronts);
+  const marketed = catalog.deals.filter((deal) => /marketed/i.test(deal.stage)).length;
+  const backEnded = catalog.deals.filter((deal) => (deal.contingentUsdMm ?? 0) > 0 || !/^none/i.test(deal.royalty)).length;
+
+  return (
+    <div className="view-stack deal-benchmark-view">
+      <section className="page-intro compact deal-intro">
+        <div><p className="eyebrow">Transaction intelligence</p><h1>U.S. specialty deal benchmarks</h1><p>Compare guaranteed cash, contingent value, rights, royalties and operating obligations—not just headline value.</p><p className="fact-standard">{catalog.meta.coverage} · public terms through {catalog.meta.updated}</p></div>
+        <button className="button secondary deal-export" onClick={() => exportDeals(filtered)}>Export {filtered.length} rows</button>
+      </section>
+
+      <section className="deal-summary" aria-label="Benchmark summary">
+        <article><span>Transactions</span><strong>{catalog.deals.length}</strong><small>public benchmarks</small></article>
+        <article><span>Marketed at signing</span><strong>{marketed}</strong><small>commercial precedents</small></article>
+        <article><span>Median license upfront</span><strong>{dealMoney(medianLicenseUpfront)}</strong><small>disclosed U.S./global licenses</small></article>
+        <article><span>Back-ended structures</span><strong>{backEnded}</strong><small>milestones, CVRs or royalties</small></article>
+      </section>
+
+      <section className="deal-tools">
+        <label className="search-field"><SearchIcon /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search asset, party, therapy, rights or term" /></label>
+        <select value={structure} onChange={(event) => setStructure(event.target.value)} aria-label="Deal structure filter">
+          {structures.map((item) => <option key={item}>{item}</option>)}
+        </select>
+        <select value={year} onChange={(event) => setYear(event.target.value)} aria-label="Deal year filter">
+          {years.map((item) => <option key={item}>{item}</option>)}
+        </select>
+        <select value={sort} onChange={(event) => setSort(event.target.value)} aria-label="Sort deal benchmarks">
+          <option value="newest">Sort: newest</option>
+          <option value="guaranteed">Sort: guaranteed value</option>
+          <option value="headline">Sort: headline value</option>
+        </select>
+      </section>
+
+      <section className="deal-list" aria-live="polite">
+        <div className="deal-results"><strong>{filtered.length}</strong><span>matching transactions</span></div>
+        {filtered.map((deal) => (
+          <article className="deal-card" key={deal.id}>
+            <div className="deal-card-heading">
+              <div className="deal-date"><strong>{new Date(`${deal.date}T12:00:00`).toLocaleDateString("en-US", { month: "short", year: "numeric" })}</strong><span>{deal.structure}</span></div>
+              <div className="deal-title"><h3>{deal.asset}</h3><p>{deal.seller} <ArrowIcon /> {deal.buyer}</p></div>
+              <span className={`deal-status ${deal.status.toLowerCase().includes("terminat") ? "terminated" : ""}`}>{deal.status}</span>
+            </div>
+
+            <div className="deal-tags"><span>{deal.therapyArea}</span><span>{deal.stage}</span></div>
+
+            <div className="deal-economics">
+              <div><span>Guaranteed</span><strong>{deal.guaranteedDisplay}</strong></div>
+              <div><span>Contingent</span><strong>{deal.contingentDisplay}</strong></div>
+              <div><span>Rights</span><strong>{deal.rightsScope}</strong></div>
+            </div>
+
+            <div className="deal-detail-grid">
+              <div><span>Royalty / retained economics</span><p>{deal.royalty}</p></div>
+              <div><span>Other transaction terms</span><p>{deal.economics}</p></div>
+            </div>
+
+            <div className="deal-takeaway"><span>Why it matters</span><p>{deal.insight}</p></div>
+            <a className="deal-source" href={deal.sourceUrl} target="_blank" rel="noreferrer">Review {deal.sourceLabel} terms <ArrowIcon /></a>
+          </article>
+        ))}
+        {!filtered.length && <div className="empty-state"><h2>No matching deals</h2><p>Broaden the search or filters.</p></div>}
+      </section>
+
+      <section className="deal-method">
+        <p className="eyebrow">How to use this set</p>
+        <h2>Normalize before negotiating</h2>
+        <div>
+          <p><b>01</b>Separate cash at close from milestones, CVRs and royalties.</p>
+          <p><b>02</b>Adjust for stage, rights geography, debt, supply, working capital and required launch spend.</p>
+          <p><b>03</b>For marketed assets, compare price to net sales and contribution profit—not gross sales alone.</p>
+          <p><b>04</b>Model reversion, termination, change-of-control and supply-transfer terms before valuing the back end.</p>
+        </div>
+      </section>
     </div>
   );
 }
@@ -793,6 +961,7 @@ function ComparePanel({ targets, onClose, onRemove }: { targets: Target[]; onClo
 
 export function AcquisitionApp() {
   const [catalog, setCatalog] = useState<Catalog | null>(null);
+  const [dealCatalog, setDealCatalog] = useState<DealBenchmarkCatalog | null>(null);
   const [loadError, setLoadError] = useState(false);
   const strategyKey: StrategyKey = "specialty";
   const [view, setView] = useState<View>("situation");
@@ -804,12 +973,18 @@ export function AcquisitionApp() {
   const [toast, setToast] = useState("");
 
   useEffect(() => {
-    fetch(new URL("data/catalog.json", window.location.href).toString())
-      .then((response) => {
-        if (!response.ok) throw new Error("Data unavailable");
-        return response.json();
+    Promise.all([
+      fetch(new URL("data/catalog.json", window.location.href).toString()),
+      fetch(new URL("data/deal-benchmarks.json", window.location.href).toString()),
+    ])
+      .then(async ([catalogResponse, dealResponse]) => {
+        if (!catalogResponse.ok || !dealResponse.ok) throw new Error("Data unavailable");
+        return Promise.all([catalogResponse.json() as Promise<Catalog>, dealResponse.json() as Promise<DealBenchmarkCatalog>]);
       })
-      .then((data: Catalog) => setCatalog(data))
+      .then(([catalogData, dealData]) => {
+        setCatalog(catalogData);
+        setDealCatalog(dealData);
+      })
       .catch(() => setLoadError(true));
   }, []);
 
@@ -899,7 +1074,7 @@ export function AcquisitionApp() {
     return <main className="loading-screen"><div className="brand-mark">CB</div><h1>Strategy data is unavailable</h1><p>Refresh to try again.</p></main>;
   }
 
-  if (!catalog || !strategy) {
+  if (!catalog || !strategy || !dealCatalog) {
     return <main className="loading-screen"><div className="brand-mark">CB</div><p className="eyebrow">Cohaddy Bio</p><h1>Preparing the strategy room</h1><div className="loading-line"><span /></div></main>;
   }
 
@@ -918,6 +1093,7 @@ export function AcquisitionApp() {
         {view === "situation" && <SituationView catalog={catalog} onOpenTargets={() => changeView("targets")} onOpenDatabase={() => changeView("database")} />}
         {view === "targets" && <TargetsView catalog={catalog} targets={targets} strategy={strategy} savedIds={savedIds} compareIds={activeCompareIds} onOpen={setSelectedTargetId} onSave={toggleSaved} onCompare={toggleCompare} />}
         {view === "database" && <DatabaseView catalog={catalog} onViewTarget={viewTarget} />}
+        {view === "deals" && <DealBenchmarksView catalog={dealCatalog} />}
         {view === "saved" && <SavedView catalog={catalog} targets={targets} savedIds={savedIds} compareIds={activeCompareIds} onOpen={setSelectedTargetId} onSave={toggleSaved} onCompare={toggleCompare} onBrowse={() => changeView("targets")} />}
       </main>
 
