@@ -27,11 +27,13 @@ test("server-renders the original specialty strategy shell and metadata", async 
 });
 
 test("keeps the two publishing targets aligned", async () => {
-  const [externalHtml, layout, app, strategyApp, router, catalog] = await Promise.all([
+  const [externalHtml, layout, app, strategyApp, diligence, commercialModels, router, catalog] = await Promise.all([
     readFile(new URL("../external/index.html", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/AssetScreenerApp.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/AcquisitionApp.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/diligence.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/commercialModels.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/AppRouter.tsx", import.meta.url), "utf8"),
     readFile(new URL("../public/data/catalog.json", import.meta.url), "utf8"),
   ]);
@@ -50,6 +52,19 @@ test("keeps the two publishing targets aligned", async () => {
   assert.match(strategyApp, /Shared corporate infrastructure/);
   assert.match(strategyApp, /Platform coherence/);
   assert.match(strategyApp, /Calculated from/);
+  assert.match(strategyApp, /Revenue uses reported facts/);
+  assert.match(strategyApp, /Commercial model &amp; sources/);
+  assert.equal((diligence.match(/^  "specialty-[^"]+": \{/gm) ?? []).length, 20);
+  assert.match(diligence, /Public parent/);
+  assert.match(diligence, /Private/);
+  assert.match(diligence, /U\.S\. split not disclosed/);
+  assert.match(diligence, /sec\.gov/);
+  assert.equal((commercialModels.match(/^  (?:"[^"]+"|[A-Z0-9]+): \{$/gm) ?? []).length, 20);
+  assert.match(commercialModels, /Specialty sales reps/);
+  assert.match(commercialModels, /Priority geographies|geographies/);
+  assert.match(strategyApp, /Modeled standalone U\.S\. team/);
+  assert.match(strategyApp, /Observed evidence/);
+  assert.match(strategyApp, /Estimation method/);
   assert.match(router, /tool.*asset-screener/);
   assert.match(router, /PreviousVersion/);
   assert.match(router, /Open US Specialty Asset Screener/);

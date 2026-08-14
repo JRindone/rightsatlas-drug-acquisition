@@ -1137,6 +1137,17 @@ button.funnel-node {
   line-height: 1.25;
 }
 
+.deal-metrics a,
+.drawer-summary a {
+  color: var(--text);
+  display: block;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.25;
+  text-decoration-color: rgba(255, 255, 255, 0.35);
+  text-underline-offset: 3px;
+}
+
 .deal-metrics div:first-child strong {
   font-size: 23px;
 }
@@ -1145,6 +1156,85 @@ button.funnel-node {
   color: var(--faint);
   font-size: 9px;
   margin-top: 3px;
+}
+
+.team-snapshot {
+  background: var(--panel-soft);
+  border-bottom: 1px solid var(--line);
+  display: grid;
+  gap: 10px 18px;
+  grid-template-columns: 1fr 1fr;
+  padding: 13px 0;
+}
+
+.team-snapshot span,
+.team-snapshot strong,
+.team-snapshot small {
+  display: block;
+}
+
+.team-snapshot span {
+  color: var(--faint);
+  font-size: 8px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.team-snapshot strong {
+  font-size: 18px;
+  margin-top: 2px;
+}
+
+.team-snapshot small {
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.team-snapshot p {
+  color: var(--muted);
+  font-size: 10px;
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.holder-block small b {
+  color: var(--teal);
+}
+
+.disclosure-badge {
+  background: rgba(88, 185, 148, 0.12);
+  border: 1px solid rgba(88, 185, 148, 0.34);
+  color: var(--teal);
+  display: inline-flex;
+  font-size: 8px;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  margin-top: 8px;
+  padding: 4px 6px;
+  text-transform: uppercase;
+}
+
+.disclosure-badge.not-disclosed,
+.disclosure-badge.pre-revenue {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: var(--line-strong);
+  color: var(--muted);
+}
+
+.disclosure-badge.broader-disclosure {
+  background: rgba(138, 189, 169, 0.08);
+  border-color: rgba(138, 189, 169, 0.25);
+  color: var(--amber);
+}
+
+.fact-standard {
+  color: var(--teal) !important;
+  font-size: 11px !important;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  margin-top: 13px !important;
+  text-transform: uppercase;
 }
 
 .fit-note {
@@ -1555,6 +1645,293 @@ button.funnel-node {
   margin: 0;
 }
 
+.revenue-diligence {
+  border-bottom: 1px solid var(--line);
+  padding: 22px 0;
+}
+
+.commercial-model-detail {
+  border-bottom: 1px solid var(--line);
+  padding: 22px 0;
+}
+
+.commercial-model-heading {
+  align-items: start;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  margin-bottom: 15px;
+}
+
+.commercial-model-heading span,
+.model-geographies > span,
+.model-method span {
+  color: var(--teal);
+  display: block;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+}
+
+.commercial-model-heading strong {
+  display: block;
+  font-size: 22px;
+}
+
+.confidence-badge {
+  border: 1px solid rgba(88, 185, 148, 0.42);
+  color: var(--teal);
+  flex: 0 0 auto;
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  padding: 5px 7px;
+  text-transform: uppercase;
+}
+
+.confidence-badge.medium {
+  border-color: rgba(246, 187, 70, 0.42);
+  color: var(--accent);
+}
+
+.confidence-badge.directional {
+  border-color: var(--line-strong);
+  color: var(--muted);
+}
+
+.team-role-groups {
+  display: grid;
+  gap: 10px;
+}
+
+.team-role-groups > div {
+  background: var(--panel-soft);
+  border: 1px solid var(--line);
+  padding: 13px;
+}
+
+.team-role-groups h3 {
+  align-items: baseline;
+  display: flex;
+  font-size: 12px;
+  gap: 7px;
+  margin: 0 0 9px;
+}
+
+.team-role-groups h3 span {
+  color: var(--accent);
+  font-size: 22px;
+}
+
+.team-role-groups dl {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+
+.team-role-groups dl > div {
+  align-items: baseline;
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 1fr auto;
+  padding-top: 6px;
+}
+
+.team-role-groups dt {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.team-role-groups dd {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 800;
+  margin: 0;
+}
+
+.model-geographies,
+.model-method {
+  border-top: 1px solid var(--line);
+  margin-top: 14px;
+  padding-top: 14px;
+}
+
+.model-geographies > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.model-geographies b {
+  background: var(--panel-strong);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 9px;
+  padding: 5px 7px;
+}
+
+.model-geographies p,
+.model-method p {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+  margin: 9px 0 0;
+}
+
+.model-method {
+  display: grid;
+  gap: 13px;
+}
+
+.model-method > div {
+  border-left: 2px solid var(--line-strong);
+  padding-left: 10px;
+}
+
+.model-method p {
+  margin-top: 0;
+}
+
+.model-sources a {
+  color: var(--teal);
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  margin-top: 5px;
+  text-decoration: none;
+}
+
+.diligence-heading {
+  align-items: flex-start;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  margin-bottom: 15px;
+}
+
+.diligence-heading > div > span,
+.source-list > span {
+  color: var(--teal);
+  display: block;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+}
+
+.diligence-heading h3 {
+  font-size: 20px;
+  margin: 0;
+}
+
+.diligence-heading .disclosure-badge {
+  flex: 0 0 auto;
+  margin-top: 0;
+}
+
+.revenue-table {
+  border: 1px solid var(--line);
+}
+
+.revenue-row {
+  align-items: start;
+  background: var(--panel-soft);
+  border-bottom: 1px solid var(--line);
+  display: grid;
+  gap: 4px 10px;
+  grid-template-columns: 62px minmax(82px, auto) 1fr;
+  padding: 11px 12px;
+}
+
+.revenue-row:last-child {
+  border-bottom: 0;
+}
+
+.revenue-row > strong {
+  color: var(--faint);
+  font-size: 10px;
+  padding-top: 2px;
+}
+
+.revenue-row > b {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.revenue-row > p {
+  color: var(--muted);
+  font-size: 10px;
+  grid-column: 2 / -1;
+  margin: 0;
+}
+
+.fact-sources {
+  display: flex;
+  gap: 5px;
+  grid-column: 3;
+  grid-row: 1;
+  justify-content: flex-end;
+}
+
+.fact-sources a,
+.source-list a {
+  color: var(--teal);
+  font-size: 10px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.no-revenue {
+  background: var(--panel-soft);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 12px;
+  margin: 0;
+  padding: 14px;
+}
+
+.diligence-notes {
+  margin-top: 11px;
+}
+
+.diligence-notes p {
+  color: var(--muted);
+  font-size: 10px;
+  margin: 0 0 5px;
+  padding-left: 12px;
+  position: relative;
+}
+
+.diligence-notes p::before {
+  color: var(--teal);
+  content: "•";
+  left: 0;
+  position: absolute;
+}
+
+.source-list {
+  border-top: 1px solid var(--line);
+  margin-top: 15px;
+  padding-top: 14px;
+}
+
+.source-list ol {
+  color: var(--faint);
+  display: grid;
+  gap: 5px;
+  margin: 8px 0 0;
+  padding-left: 20px;
+}
+
+.source-list a {
+  color: var(--muted);
+  font-weight: 700;
+}
+
 .inline-chips {
   display: flex;
   flex-wrap: wrap;
@@ -1655,6 +2032,13 @@ button.funnel-node {
   margin: 5px 0 0;
 }
 
+.compare-column dd small {
+  color: var(--faint);
+  display: block;
+  font-size: 9px;
+  margin-top: 4px;
+}
+
 .compare-column > a {
   color: var(--accent);
   font-size: 11px;
@@ -1721,6 +2105,10 @@ button.funnel-node {
 }
 
 @media (min-width: 620px) {
+  .team-role-groups {
+    grid-template-columns: 1fr 1fr;
+  }
+
   .topbar {
     grid-template-columns: auto 1fr auto;
   }

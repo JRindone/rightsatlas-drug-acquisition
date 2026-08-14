@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { COMMERCIAL_MODELS, teamTotal, type CommercialModel } from "./commercialModels";
+import { TOP20_DILIGENCE, type AssetDiligence } from "./diligence";
 
 type StrategyKey = "core" | "specialty";
 type View = "situation" | "targets" | "database" | "saved";
@@ -140,7 +142,7 @@ const CRITERIA_DEFINITIONS: Record<string, { definition: string; calculation: st
   },
   "Revenue ceiling": {
     definition: "A transaction-size and operating-scale screen based on recent annual U.S. product sales.",
-    calculation: "Assets at roughly $100m or less pass the target range; reported sales or a screening estimate is used.",
+    calculation: "Assets at roughly $100m or less pass the target range when U.S. sales are publicly disclosed; undisclosed products remain unquantified.",
   },
   "Transaction signal / owner feasibility": {
     definition: "Evidence that a rights deal, partnership or carve-out may be actionable.",
@@ -156,11 +158,16 @@ const CRITERIA_DEFINITIONS: Record<string, { definition: string; calculation: st
   },
 };
 
-function money(value: number | null) {
-  if (value === null || Number.isNaN(value)) return "Not profiled";
-  if (value < 1) return `$${value.toFixed(1)}m`;
-  if (value < 10) return `$${value.toFixed(1)}m`;
-  return `$${Math.round(value)}m`;
+function diligenceFor(target: Target) {
+  return TOP20_DILIGENCE[target.id];
+}
+
+function reportedRevenue(target: Target) {
+  return diligenceFor(target)?.latestDisplay ?? "Not disclosed";
+}
+
+function reportedPeriod(target: Target) {
+  return diligenceFor(target)?.latestPeriod ?? "Public product-level figure not located";
 }
 
 function short(value: string, limit = 180) {
@@ -374,7 +381,7 @@ function SituationView({ catalog, onOpenTargets, onOpenDatabase }: { catalog: Ca
         </div>
         <div className="assumption-grid">
           <p><span>01</span>All 20 assets are ranked for specialty-platform fit.</p>
-          <p><span>02</span>Sales, team size and run-rate are screening estimates.</p>
+          <p><span>02</span>Revenue shows public facts only; no estimates or currency conversion.</p>
           <p><span>03</span>Owner willingness is not implied by strategic fit.</p>
           <p><span>04</span>Validate product P&amp;L, rights, supply and access before an offer.</p>
         </div>
@@ -386,6 +393,7 @@ function SituationView({ catalog, onOpenTargets, onOpenDatabase }: { catalog: Ca
 function TargetCard({
   target,
   drugType,
+  commercialModel,
   saved,
   compared,
   onOpen,
@@ -394,12 +402,14 @@ function TargetCard({
 }: {
   target: Target;
   drugType: string;
+  commercialModel: CommercialModel;
   saved: boolean;
   compared: boolean;
   onOpen: () => void;
   onSave: () => void;
   onCompare: () => void;
 }) {
+  const diligence = diligenceFor(target);
   return (
     <article className={`target-card ${target.rank <= 3 ? "priority" : ""}`}>
       <div className="target-topline">
@@ -415,8 +425,23 @@ function TargetCard({
       </div>
 
       <div className="deal-metrics">
-        <div><span>Annual sales</span><strong>{money(target.revenueUsdMm)}</strong><small>{target.period}</small></div>
-        <div><span>U.S. rights holder</span><strong>{target.company}</strong></div>
+        <div>
+          <span>Reported revenue</span>
+          <strong>{reportedRevenue(target)}</strong>
+          <small>{reportedPeriod(target)}</small>
+          {diligence && <em className={`disclosure-badge ${diligence.disclosure.toLowerCase().replaceAll(" ", "-")}`}>{diligence.disclosure}</em>}
+        </div>
+        <div className="holder-block">
+          <span>U.S. rights holder</span>
+          {diligence ? <a href={diligence.companyUrl} target="_blank" rel="noreferrer">{diligence.rightsHolder} ↗</a> : <strong>{target.company}</strong>}
+          {diligence && <small><b>{diligence.ownership}</b>{diligence.ticker ? ` · ${diligence.ticker}` : ""}<br />Parent: {diligence.parent}</small>}
+        </div>
+      </div>
+
+      <div className="team-snapshot">
+        <div><span>Modeled U.S. team</span><strong>{teamTotal(commercialModel.field) + teamTotal(commercialModel.inside)}</strong><small>{commercialModel.confidence} confidence</small></div>
+        <div><span>Field / inside</span><strong>{teamTotal(commercialModel.field)} / {teamTotal(commercialModel.inside)}</strong><small>standalone estimate</small></div>
+        <p>{commercialModel.geographies.slice(0, 3).join(" · ")}</p>
       </div>
 
       <p className="fit-note">{short(target.rationale, 175)}</p>
@@ -435,7 +460,7 @@ function TargetCard({
       </div>
 
       <div className="target-actions">
-        <button className="text-action" onClick={onOpen}>Open deal brief <ArrowIcon /></button>
+        <button className="text-action" onClick={onOpen}>Commercial model &amp; sources <ArrowIcon /></button>
         <button className={`compare-action ${compared ? "active" : ""}`} onClick={onCompare}>{compared ? "In compare" : "Compare"}</button>
         <a href={target.piUrl} target="_blank" rel="noreferrer">Prescribing info ↗</a>
       </div>
@@ -470,16 +495,17 @@ function TargetsView({
     const needle = query.trim().toLowerCase();
     const items = targets.filter((target) => {
       const matchesPlatform = platform === "All platforms" || target.platform === platform;
-      const haystack = [target.asset, target.ingredient, target.company, target.therapyArea, target.callPoints, target.mechanism].join(" ").toLowerCase();
+      const diligence = diligenceFor(target);
+      const haystack = [target.asset, target.ingredient, target.company, target.therapyArea, target.callPoints, target.mechanism, diligence?.parent, diligence?.rightsHolder, diligence?.ticker, diligence?.ownership, ...(COMMERCIAL_MODELS[target.asset]?.geographies ?? [])].join(" ").toLowerCase();
       return matchesPlatform && (!needle || haystack.includes(needle));
     });
-    return [...items].sort((a, b) => sort === "sales" ? (b.revenueUsdMm ?? -1) - (a.revenueUsdMm ?? -1) : a.rank - b.rank);
+    return [...items].sort((a, b) => sort === "sales" ? (diligenceFor(b)?.sortUsdMm ?? -1) - (diligenceFor(a)?.sortUsdMm ?? -1) : a.rank - b.rank);
   }, [targets, platform, query, sort]);
 
   return (
     <div className="view-stack">
       <section className="page-intro compact">
-        <div><p className="eyebrow">Specialty screen</p><h1>{SPECIALTY_STRATEGY_NAME} targets</h1><p>{strategy.description}</p></div>
+        <div><p className="eyebrow">Specialty screen</p><h1>{SPECIALTY_STRATEGY_NAME} targets</h1><p>{strategy.description}</p><p className="fact-standard">Revenue uses reported facts · team sizes are clearly labeled estimates</p></div>
         <div className="intro-stat"><strong>{filtered.length}</strong><span>of 20 assets</span></div>
       </section>
       <section className="target-tools">
@@ -498,6 +524,7 @@ function TargetsView({
             key={target.id}
             target={target}
             drugType={drugTypeFor(target, catalog)}
+            commercialModel={COMMERCIAL_MODELS[target.asset]}
             saved={savedIds.includes(target.id)}
             compared={compareIds.includes(target.id)}
             onOpen={() => onOpen(target.id)}
@@ -593,7 +620,7 @@ function SavedView({
       {saved.length ? (
         <section className="target-list">
           {saved.map((target) => (
-            <TargetCard key={target.id} target={target} drugType={drugTypeFor(target, catalog)} saved compared={compareIds.includes(target.id)} onOpen={() => onOpen(target.id)} onSave={() => onSave(target.id)} onCompare={() => onCompare(target.id)} />
+            <TargetCard key={target.id} target={target} drugType={drugTypeFor(target, catalog)} commercialModel={COMMERCIAL_MODELS[target.asset]} saved compared={compareIds.includes(target.id)} onOpen={() => onOpen(target.id)} onSave={() => onSave(target.id)} onCompare={() => onCompare(target.id)} />
           ))}
         </section>
       ) : (
@@ -607,7 +634,80 @@ function DetailRow({ label, children }: { label: string; children: React.ReactNo
   return <div className="detail-row"><span>{label}</span><p>{children}</p></div>;
 }
 
+function RevenueHistory({ diligence }: { diligence: AssetDiligence }) {
+  return (
+    <section className="revenue-diligence">
+      <div className="diligence-heading">
+        <div><span>Revenue diligence</span><h3>Publicly reported history</h3></div>
+        <span className={`disclosure-badge ${diligence.disclosure.toLowerCase().replaceAll(" ", "-")}`}>{diligence.disclosure}</span>
+      </div>
+      {diligence.revenueFacts.length ? (
+        <div className="revenue-table" role="table" aria-label="Reported revenue history">
+          {diligence.revenueFacts.map((fact) => (
+            <div className="revenue-row" role="row" key={`${fact.period}-${fact.value}`}>
+              <strong role="cell">{fact.period}</strong>
+              <b role="cell">{fact.value}</b>
+              <p role="cell">{fact.scope}</p>
+              <span role="cell" className="fact-sources">
+                {fact.sourceIds.map((sourceId) => {
+                  const index = diligence.sources.findIndex((source) => source.id === sourceId);
+                  const source = diligence.sources[index];
+                  return source ? <a href={source.url} target="_blank" rel="noreferrer" aria-label={source.label} key={source.id}>[{index + 1}]</a> : null;
+                })}
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : <p className="no-revenue">No product-level annual revenue was publicly disclosed.</p>}
+      {diligence.notes.length > 0 && <div className="diligence-notes">{diligence.notes.map((note) => <p key={note}>{note}</p>)}</div>}
+      <div className="source-list">
+        <span>Sources</span>
+        <ol>
+          {diligence.sources.map((source) => <li key={source.id}><a href={source.url} target="_blank" rel="noreferrer">{source.label} ↗</a></li>)}
+        </ol>
+      </div>
+    </section>
+  );
+}
+
+function CommercialModelDetail({ model }: { model: CommercialModel }) {
+  const fieldTotal = teamTotal(model.field);
+  const insideTotal = teamTotal(model.inside);
+
+  return (
+    <section className="commercial-model-detail">
+      <div className="commercial-model-heading">
+        <div><span>Modeled standalone U.S. team</span><strong>{fieldTotal + insideTotal} roles</strong></div>
+        <b className={`confidence-badge ${model.confidence.toLowerCase()}`}>{model.confidence} confidence</b>
+      </div>
+      <div className="team-role-groups">
+        <div>
+          <h3><span>{fieldTotal}</span>Field</h3>
+          <dl>{model.field.map((item) => <div key={item.role}><dt>{item.role}</dt><dd>{item.count}</dd></div>)}</dl>
+        </div>
+        <div>
+          <h3><span>{insideTotal}</span>Inside</h3>
+          <dl>{model.inside.map((item) => <div key={item.role}><dt>{item.role}</dt><dd>{item.count}</dd></div>)}</dl>
+        </div>
+      </div>
+      <div className="model-geographies">
+        <span>Priority geographies</span>
+        <div>{model.geographies.map((item) => <b key={item}>{item}</b>)}</div>
+        <p>{model.geographyMethod}</p>
+      </div>
+      <div className="model-method">
+        <div><span>Observed evidence</span><p>{model.evidence}</p></div>
+        <div><span>Estimation method</span><p>{model.method}</p></div>
+        {model.note && <div><span>Operating note</span><p>{model.note}</p></div>}
+        <div className="model-sources"><span>Sources</span>{model.sources.map((source) => <a key={source.url} href={source.url} target="_blank" rel="noreferrer">{source.label} ↗</a>)}</div>
+      </div>
+    </section>
+  );
+}
+
 function TargetDrawer({ target, onClose, saved, onSave }: { target: Target; onClose: () => void; saved: boolean; onSave: () => void }) {
+  const diligence = diligenceFor(target);
+  const commercialModel = COMMERCIAL_MODELS[target.asset];
   useEffect(() => {
     const close = (event: KeyboardEvent) => event.key === "Escape" && onClose();
     window.addEventListener("keydown", close);
@@ -626,17 +726,22 @@ function TargetDrawer({ target, onClose, saved, onSave }: { target: Target; onCl
           <button className="close-button" onClick={onClose} aria-label="Close"><CloseIcon /></button>
         </div>
         <div className="drawer-summary">
-          <div><span>Annual sales</span><strong>{money(target.revenueUsdMm)}</strong><small>{target.period}</small></div>
-          <div><span>U.S. rights holder</span><strong>{target.company}</strong></div>
+          <div><span>Reported revenue</span><strong>{reportedRevenue(target)}</strong><small>{reportedPeriod(target)}</small></div>
+          <div><span>U.S. rights holder</span>{diligence ? <a href={diligence.companyUrl} target="_blank" rel="noreferrer">{diligence.rightsHolder} ↗</a> : <strong>{target.company}</strong>}{diligence && <small>{diligence.ownership}{diligence.ticker ? ` · ${diligence.ticker}` : ""}</small>}</div>
         </div>
         <div className="drawer-body">
+          {diligence && <>
+            <DetailRow label="Ownership"><b>{diligence.ownership}</b>{diligence.ticker ? ` · ${diligence.ticker}` : ""}<br />Parent: {diligence.parent}</DetailRow>
+            <DetailRow label="Commercial status">{diligence.launch}<br />{diligence.indicationSplit}</DetailRow>
+            <RevenueHistory diligence={diligence} />
+          </>}
           <DetailRow label="Why it fits">{target.rationale}</DetailRow>
           <DetailRow label="Primary call points"><span className="inline-chips">{callPointChips(target.callPoints).map((item) => <b key={item}>{item}</b>)}</span></DetailRow>
           <DetailRow label="Product"><span className="inline-chips"><b>{target.mechanism}</b><b>{target.route}</b><b>{target.dosing}</b></span></DetailRow>
-          <DetailRow label="Team model">{target.teamFit}</DetailRow>
+          <DetailRow label="Team fit">{target.teamFit}</DetailRow>
+          {commercialModel && <CommercialModelDetail model={commercialModel} />}
           <DetailRow label="Transaction signal">{target.transactionSignal}</DetailRow>
           <DetailRow label="Validate next">{target.risks}</DetailRow>
-          <DetailRow label="Sales assumption">{target.revenueAssumption}</DetailRow>
         </div>
         <div className="drawer-actions">
           <button className={`button ${saved ? "secondary" : "primary"}`} onClick={onSave}>{saved ? "Remove from saved" : "Save asset"}</button>
@@ -670,11 +775,11 @@ function ComparePanel({ targets, onClose, onRemove }: { targets: Target[]; onClo
               <h3>{target.asset}</h3>
               <p>{target.therapyArea}</p>
               <dl>
-                <div><dt>Annual sales</dt><dd>{money(target.revenueUsdMm)}</dd></div>
-                <div><dt>Rights holder</dt><dd>{target.company}</dd></div>
+                <div><dt>Reported revenue</dt><dd>{reportedRevenue(target)}<small>{reportedPeriod(target)}</small></dd></div>
+                <div><dt>Rights holder</dt><dd>{diligenceFor(target)?.rightsHolder ?? target.company}<small>{diligenceFor(target)?.ownership}{diligenceFor(target)?.ticker ? ` · ${diligenceFor(target)?.ticker}` : ""}</small></dd></div>
                 <div><dt>Call points</dt><dd>{target.callPoints}</dd></div>
                 <div><dt>Mechanism</dt><dd>{target.mechanism}</dd></div>
-                <div><dt>Team</dt><dd>{target.teamFit}</dd></div>
+                <div><dt>Modeled U.S. team</dt><dd>{COMMERCIAL_MODELS[target.asset] ? `${teamTotal(COMMERCIAL_MODELS[target.asset].field) + teamTotal(COMMERCIAL_MODELS[target.asset].inside)} total · ${teamTotal(COMMERCIAL_MODELS[target.asset].field)} field · ${teamTotal(COMMERCIAL_MODELS[target.asset].inside)} inside` : target.teamFit}</dd></div>
                 <div><dt>Validate</dt><dd>{target.risks}</dd></div>
               </dl>
               <a href={target.piUrl} target="_blank" rel="noreferrer">Prescribing info ↗</a>
