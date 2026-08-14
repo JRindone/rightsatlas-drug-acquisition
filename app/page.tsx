@@ -1,5 +1,5 @@
-import { AcquisitionApp } from "./AcquisitionApp";
+import { AppRouter } from "./AppRouter";
 
 export default function Home() {
-  return <AcquisitionApp />;
+  return <AppRouter />;
 }

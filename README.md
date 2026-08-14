@@ -1,8 +1,8 @@
-# Cohaddy Bio Specialty Platform
+# US Specialty Asset Screener
 
-A mobile-first CEO workspace for Option 2: acquire a differentiated U.S. commercial asset and build a dedicated specialty team around a coherent multi-asset platform.
+A mobile-first business tool for screening the U.S. specialty-product universe. Users define hard filters and ranking weights, review business-oriented product records, build a device-local shortlist and export results.
 
-The funnel screens 1,605 products to 635 mechanism-classified products, 81 specialty candidates and 20 ranked targets. The searchable database is limited to those 81 specialty candidates. Target briefs emphasize strategic fit, rights holder, annual sales, call points, administration, team model and next diligence decisions.
+The searchable universe contains 1,605 commercial products. The previous specialty strategy experience remains available at `?version=previous`.
 
 ## Run locally
 
