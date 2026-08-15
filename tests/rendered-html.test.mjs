@@ -73,7 +73,10 @@ test("keeps the two publishing targets aligned", async () => {
   assert.match(strategyApp, /Modeled standalone U\.S\. team/);
   assert.match(strategyApp, /Observed evidence/);
   assert.match(strategyApp, /Estimation method/);
-  assert.match(strategyApp, /U\.S\. specialty deal benchmarks/);
+  assert.match(strategyApp, /Central deal database/);
+  assert.match(strategyApp, /Deal structure benchmarks/);
+  assert.match(strategyApp, /Candidate-company activity/);
+  assert.match(strategyApp, /All product deals · every stage/);
   assert.match(strategyApp, /Export.*rows/);
   assert.match(router, /tool.*asset-screener/);
   assert.match(router, /PreviousVersion/);
@@ -81,8 +84,14 @@ test("keeps the two publishing targets aligned", async () => {
   assert.match(catalog, /"strategyRecords":40/);
   assert.match(catalog, /Build a focused specialty franchise/);
   const deals = JSON.parse(dealBenchmarks);
-  assert.ok(deals.deals.length >= 34);
+  assert.equal(deals.deals.length, 77);
+  assert.equal(deals.meta.candidateCompanies.length, 17);
   assert.ok(deals.deals.every((deal) => deal.sourceUrl && deal.rightsScope && deal.insight));
+  assert.ok(deals.deals.every((deal) => deal.stageGroup && deal.marketScope && Array.isArray(deal.candidateCompanies)));
+  assert.ok(deals.deals.some((deal) => deal.stageGroup === "Discovery / preclinical"));
+  assert.ok(deals.deals.some((deal) => deal.stageGroup === "Commercial"));
+  assert.ok(deals.deals.some((deal) => deal.marketScope === "Non-specialty"));
+  assert.ok(deals.deals.filter((deal) => deal.candidateCompanies.length).length >= 40);
   assert.ok(deals.deals.some((deal) => deal.structure === "Royalty monetization"));
   assert.ok(deals.deals.some((deal) => deal.status.includes("Terminated")));
 });

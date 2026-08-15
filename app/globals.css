@@ -1460,6 +1460,63 @@ button.funnel-node {
   min-width: 156px;
 }
 
+.deal-lens-switch {
+  display: grid;
+  gap: 8px;
+}
+
+.deal-lens-switch button {
+  align-items: center;
+  background: var(--panel);
+  border: 1px solid var(--line-strong);
+  color: var(--text);
+  cursor: pointer;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 28px minmax(0, 1fr);
+  min-height: 76px;
+  padding: 13px 14px;
+  text-align: left;
+}
+
+.deal-lens-switch button > b {
+  align-items: center;
+  border: 1px solid var(--line-strong);
+  color: var(--faint);
+  display: flex;
+  font-size: 11px;
+  height: 28px;
+  justify-content: center;
+  width: 28px;
+}
+
+.deal-lens-switch button span,
+.deal-lens-switch button strong,
+.deal-lens-switch button small {
+  display: block;
+}
+
+.deal-lens-switch button strong {
+  font-size: 13px;
+  margin-bottom: 3px;
+}
+
+.deal-lens-switch button small {
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.deal-lens-switch button.active {
+  background: var(--panel-strong);
+  border-color: var(--accent);
+}
+
+.deal-lens-switch button.active > b {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--background);
+}
+
 .deal-summary {
   border-bottom: 1px solid var(--line);
   border-top: 1px solid var(--line);
@@ -1513,6 +1570,82 @@ button.funnel-node {
   min-height: 49px;
 }
 
+.candidate-deal-coverage {
+  display: grid;
+  gap: 16px;
+}
+
+.deal-section-heading {
+  display: grid;
+  gap: 7px;
+}
+
+.deal-section-heading h2 {
+  font-size: clamp(23px, 6vw, 36px);
+}
+
+.deal-section-heading > p {
+  color: var(--muted);
+  font-size: 10px;
+  margin: 0;
+}
+
+.candidate-company-grid {
+  display: grid;
+  gap: 7px;
+  grid-template-columns: 1fr;
+}
+
+.candidate-company-grid button {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--text);
+  cursor: pointer;
+  min-width: 0;
+  padding: 12px;
+  text-align: left;
+}
+
+.candidate-company-grid button.active {
+  border-color: var(--accent);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.candidate-company-grid span {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.candidate-company-grid strong {
+  font-size: 11px;
+}
+
+.candidate-company-grid b {
+  color: var(--teal);
+  font-size: 14px;
+}
+
+.candidate-company-grid small,
+.candidate-company-grid em {
+  display: block;
+  font-style: normal;
+}
+
+.candidate-company-grid small {
+  color: var(--muted);
+  font-size: 8px;
+  margin-top: 4px;
+}
+
+.candidate-company-grid em {
+  color: var(--faint);
+  font-size: 8px;
+  margin-top: 8px;
+  text-transform: uppercase;
+}
+
 .deal-tools select {
   background: var(--panel);
   border: 1px solid var(--line-strong);
@@ -1548,6 +1681,10 @@ button.funnel-node {
   border: 1px solid var(--line);
   min-width: 0;
   padding: 18px;
+}
+
+.deal-card.candidate-linked {
+  border-left-color: var(--teal);
 }
 
 .deal-card-heading {
@@ -1629,6 +1766,16 @@ button.funnel-node {
   color: var(--muted);
   font-size: 9px;
   padding: 5px 7px;
+}
+
+.deal-tags .candidate-tag {
+  border-color: rgba(82, 199, 170, 0.45);
+  color: var(--teal);
+}
+
+.deal-tags .candidate-asset-tag {
+  border-color: rgba(255, 255, 255, 0.24);
+  color: var(--text);
 }
 
 .deal-economics {
@@ -2540,6 +2687,14 @@ button.funnel-node {
     grid-template-columns: repeat(4, 1fr);
   }
 
+  .deal-lens-switch {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .candidate-company-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
   .deal-summary article {
     padding: 18px 16px;
   }
@@ -2772,11 +2927,15 @@ button.funnel-node {
   }
 
   .deal-tools {
-    grid-template-columns: minmax(320px, 1fr) repeat(3, minmax(150px, 0.4fr));
+    grid-template-columns: minmax(260px, 1.4fr) repeat(5, minmax(90px, 0.55fr));
   }
 
   .deal-tools .search-field {
     grid-column: auto;
+  }
+
+  .candidate-company-grid {
+    grid-template-columns: repeat(3, 1fr);
   }
 
   .deal-card {
@@ -2808,6 +2967,10 @@ button.funnel-node {
 
   .target-card {
     min-height: 565px;
+  }
+
+  .candidate-company-grid {
+    grid-template-columns: repeat(4, 1fr);
   }
 }
 

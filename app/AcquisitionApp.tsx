@@ -113,6 +113,8 @@ type DealBenchmark = {
   asset: string;
   therapyArea: string;
   stage: string;
+  stageGroup: "Discovery / preclinical" | "Phase 1" | "Phase 2" | "Phase 3 / registration" | "Commercial" | "Mixed / platform";
+  marketScope: "Specialty" | "Non-specialty" | "Mixed / platform";
   structure: string;
   rightsScope: string;
   guaranteedUsdMm: number | null;
@@ -127,6 +129,8 @@ type DealBenchmark = {
   status: string;
   sourceLabel: string;
   sourceUrl: string;
+  candidateCompanies: string[];
+  candidateAssets: string[];
 };
 
 type DealBenchmarkCatalog = {
@@ -135,6 +139,7 @@ type DealBenchmarkCatalog = {
     coverage: string;
     updated: string;
     method: string;
+    candidateCompanies: { name: string; assets: string[] }[];
   };
   deals: DealBenchmark[];
 };
@@ -143,7 +148,7 @@ const VIEW_LABELS: Record<View, string> = {
   situation: "Current situation",
   targets: "Targets",
   database: "Database",
-  deals: "Deals",
+  deals: "Deal database",
   saved: "Saved",
 };
 
@@ -237,13 +242,13 @@ function csvCell(value: string | number | null) {
 }
 
 function exportDeals(deals: DealBenchmark[]) {
-  const headers = ["Date", "Asset", "Buyer", "Seller", "Therapy area", "Stage", "Structure", "Rights scope", "Guaranteed USD mm", "Contingent USD mm", "Headline USD mm", "Guaranteed terms", "Contingent terms", "Royalty / retained economics", "Sales at deal USD mm", "Other terms", "Benchmark implication", "Status", "Source"];
-  const rows = deals.map((deal) => [deal.date, deal.asset, deal.buyer, deal.seller, deal.therapyArea, deal.stage, deal.structure, deal.rightsScope, deal.guaranteedUsdMm, deal.contingentUsdMm, deal.headlineUsdMm, deal.guaranteedDisplay, deal.contingentDisplay, deal.royalty, deal.salesAtDealUsdMm, deal.economics, deal.insight, deal.status, deal.sourceUrl]);
+  const headers = ["Date", "Asset", "Buyer", "Seller", "Therapy area", "Normalized stage", "Stage at signing", "Market type", "Structure", "Rights scope", "Candidate companies", "Matched candidate assets", "Guaranteed USD mm", "Contingent USD mm", "Headline USD mm", "Guaranteed terms", "Contingent terms", "Royalty / retained economics", "Sales at deal USD mm", "Other terms", "Benchmark implication", "Status", "Source"];
+  const rows = deals.map((deal) => [deal.date, deal.asset, deal.buyer, deal.seller, deal.therapyArea, deal.stageGroup, deal.stage, deal.marketScope, deal.structure, deal.rightsScope, deal.candidateCompanies.join("; "), deal.candidateAssets.join("; "), deal.guaranteedUsdMm, deal.contingentUsdMm, deal.headlineUsdMm, deal.guaranteedDisplay, deal.contingentDisplay, deal.royalty, deal.salesAtDealUsdMm, deal.economics, deal.insight, deal.status, deal.sourceUrl]);
   const csv = [headers, ...rows].map((row) => row.map(csvCell).join(",")).join("\n");
   const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = "us-specialty-drug-deal-benchmarks.csv";
+  anchor.download = "central-product-deal-database.csv";
   anchor.click();
   URL.revokeObjectURL(url);
 }
@@ -707,18 +712,29 @@ function DatabaseView({ catalog, onViewTarget }: { catalog: Catalog; onViewTarge
 }
 
 function DealBenchmarksView({ catalog }: { catalog: DealBenchmarkCatalog }) {
+  const [lens, setLens] = useState<"structure" | "candidates">("structure");
   const [query, setQuery] = useState("");
   const [structure, setStructure] = useState("All structures");
   const [year, setYear] = useState("All years");
+  const [stageGroup, setStageGroup] = useState("All stages");
+  const [marketScope, setMarketScope] = useState("All markets");
+  const [company, setCompany] = useState("All candidate companies");
   const [sort, setSort] = useState("newest");
   const structures = useMemo(() => ["All structures", ...Array.from(new Set(catalog.deals.map((deal) => deal.structure))).sort()], [catalog]);
   const years = useMemo(() => ["All years", ...Array.from(new Set(catalog.deals.map((deal) => deal.date.slice(0, 4)))).sort().reverse()], [catalog]);
+  const stages = ["All stages", "Discovery / preclinical", "Phase 1", "Phase 2", "Phase 3 / registration", "Commercial", "Mixed / platform"];
+  const markets = ["All markets", "Specialty", "Non-specialty", "Mixed / platform"];
+  const companyCounts = useMemo(() => new Map(catalog.meta.candidateCompanies.map((candidate) => [candidate.name, catalog.deals.filter((deal) => deal.candidateCompanies.includes(candidate.name)).length])), [catalog]);
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
     const matches = catalog.deals.filter((deal) => {
-      const haystack = [deal.asset, deal.buyer, deal.seller, deal.therapyArea, deal.stage, deal.structure, deal.rightsScope, deal.royalty, deal.economics, deal.insight].join(" ").toLowerCase();
-      return (structure === "All structures" || deal.structure === structure)
+      const haystack = [deal.asset, deal.buyer, deal.seller, deal.therapyArea, deal.stage, deal.stageGroup, deal.marketScope, deal.structure, deal.rightsScope, deal.royalty, deal.economics, deal.insight, ...deal.candidateCompanies, ...deal.candidateAssets].join(" ").toLowerCase();
+      return (lens === "structure" || deal.candidateCompanies.length > 0)
+        && (structure === "All structures" || deal.structure === structure)
         && (year === "All years" || deal.date.startsWith(year))
+        && (stageGroup === "All stages" || deal.stageGroup === stageGroup)
+        && (marketScope === "All markets" || deal.marketScope === marketScope)
+        && (company === "All candidate companies" || deal.candidateCompanies.includes(company))
         && (!needle || haystack.includes(needle));
     });
     return [...matches].sort((a, b) => sort === "guaranteed"
@@ -726,33 +742,87 @@ function DealBenchmarksView({ catalog }: { catalog: DealBenchmarkCatalog }) {
       : sort === "headline"
         ? (b.headlineUsdMm ?? -1) - (a.headlineUsdMm ?? -1)
         : b.date.localeCompare(a.date));
-  }, [catalog, query, structure, year, sort]);
+  }, [catalog, lens, query, structure, year, stageGroup, marketScope, company, sort]);
 
   const rightsDealUpfronts = catalog.deals
     .filter((deal) => /license|asset purchase/i.test(deal.structure) && deal.guaranteedUsdMm !== null)
     .map((deal) => deal.guaranteedUsdMm as number);
   const medianRightsUpfront = median(rightsDealUpfronts);
-  const marketed = catalog.deals.filter((deal) => /marketed/i.test(deal.stage)).length;
+  const stageCoverage = new Set(catalog.deals.map((deal) => deal.stageGroup)).size;
   const backEnded = catalog.deals.filter((deal) => (deal.contingentUsdMm ?? 0) > 0 || !/^none/i.test(deal.royalty)).length;
+  const linkedDeals = catalog.deals.filter((deal) => deal.candidateCompanies.length > 0);
+  const activeCompanies = new Set(linkedDeals.flatMap((deal) => deal.candidateCompanies)).size;
+  const noActivity = catalog.meta.candidateCompanies.length - activeCompanies;
+  const commercialLinked = linkedDeals.filter((deal) => deal.stageGroup === "Commercial" || deal.stageGroup === "Mixed / platform").length;
+  const summary = lens === "structure"
+    ? [
+        ["Transactions", String(catalog.deals.length), "one centralized dataset"],
+        ["Stage coverage", String(stageCoverage), "discovery through commercial"],
+        ["Median rights upfront", dealMoney(medianRightsUpfront), "disclosed licenses / assets"],
+        ["Back-ended structures", String(backEnded), "milestones, CVRs or royalties"],
+      ]
+    : [
+        ["Candidate-linked deals", String(linkedDeals.length), "buyer or seller activity"],
+        ["Owners with activity", `${activeCompanies} / ${catalog.meta.candidateCompanies.length}`, "material deals located"],
+        ["Commercial / mixed", String(commercialLinked), "marketed or portfolio deals"],
+        ["No disclosed activity", String(noActivity), "kept visible in coverage"],
+      ];
+
+  function selectLens(nextLens: "structure" | "candidates") {
+    setLens(nextLens);
+    if (nextLens === "structure") setCompany("All candidate companies");
+  }
 
   return (
     <div className="view-stack deal-benchmark-view">
       <section className="page-intro compact deal-intro">
-        <div><p className="eyebrow">Transaction intelligence</p><h1>U.S. specialty deal benchmarks</h1><p>Compare guaranteed cash, contingent value, rights, royalties and operating obligations—not just headline value.</p><p className="fact-standard">{catalog.meta.coverage} · public terms through {catalog.meta.updated}</p></div>
+        <div><p className="eyebrow">Transaction intelligence</p><h1>Central deal database</h1><p>One product-deal set. Two decision views.</p><p className="fact-standard">{catalog.meta.coverage} · updated {catalog.meta.updated}</p></div>
         <button className="button secondary deal-export" onClick={() => exportDeals(filtered)}>Export {filtered.length} rows</button>
       </section>
 
-      <section className="deal-summary" aria-label="Benchmark summary">
-        <article><span>Transactions</span><strong>{catalog.deals.length}</strong><small>public benchmarks</small></article>
-        <article><span>Marketed at signing</span><strong>{marketed}</strong><small>commercial precedents</small></article>
-        <article><span>Median rights-deal upfront</span><strong>{dealMoney(medianRightsUpfront)}</strong><small>licenses and asset purchases</small></article>
-        <article><span>Back-ended structures</span><strong>{backEnded}</strong><small>milestones, CVRs or royalties</small></article>
+      <section className="deal-lens-switch" aria-label="Deal database view">
+        <button className={lens === "structure" ? "active" : ""} onClick={() => selectLens("structure")}><b>1</b><span><strong>Deal structure benchmarks</strong><small>All product deals · every stage</small></span></button>
+        <button className={lens === "candidates" ? "active" : ""} onClick={() => selectLens("candidates")}><b>2</b><span><strong>Candidate-company activity</strong><small>All products · buyer and seller history</small></span></button>
       </section>
+
+      <section className="deal-summary" aria-label="Benchmark summary">
+        {summary.map(([label, value, note]) => <article key={label}><span>{label}</span><strong>{value}</strong><small>{note}</small></article>)}
+      </section>
+
+      {lens === "candidates" && (
+        <section className="candidate-deal-coverage">
+          <div className="deal-section-heading"><div><p className="eyebrow">Candidate owner coverage</p><h2>Transaction behavior by company</h2></div><p>Select an owner. Zero-activity companies stay in view.</p></div>
+          <div className="candidate-company-grid">
+            {catalog.meta.candidateCompanies.map((candidate) => {
+              const count = companyCounts.get(candidate.name) ?? 0;
+              return (
+                <button className={company === candidate.name ? "active" : ""} key={candidate.name} onClick={() => setCompany(company === candidate.name ? "All candidate companies" : candidate.name)}>
+                  <span><strong>{candidate.name}</strong><b>{count || "—"}</b></span>
+                  <small>{candidate.assets.join(" · ")}</small>
+                  <em>{count ? `${count} transaction${count === 1 ? "" : "s"}` : "No disclosed activity located"}</em>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       <section className="deal-tools">
         <label className="search-field"><SearchIcon /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search asset, party, therapy, rights or term" /></label>
+        {lens === "candidates" && (
+          <select value={company} onChange={(event) => setCompany(event.target.value)} aria-label="Candidate company filter">
+            <option>All candidate companies</option>
+            {catalog.meta.candidateCompanies.map((candidate) => <option key={candidate.name}>{candidate.name}</option>)}
+          </select>
+        )}
         <select value={structure} onChange={(event) => setStructure(event.target.value)} aria-label="Deal structure filter">
           {structures.map((item) => <option key={item}>{item}</option>)}
+        </select>
+        <select value={stageGroup} onChange={(event) => setStageGroup(event.target.value)} aria-label="Development stage filter">
+          {stages.map((item) => <option key={item}>{item}</option>)}
+        </select>
+        <select value={marketScope} onChange={(event) => setMarketScope(event.target.value)} aria-label="Market type filter">
+          {markets.map((item) => <option key={item}>{item}</option>)}
         </select>
         <select value={year} onChange={(event) => setYear(event.target.value)} aria-label="Deal year filter">
           {years.map((item) => <option key={item}>{item}</option>)}
@@ -765,9 +835,9 @@ function DealBenchmarksView({ catalog }: { catalog: DealBenchmarkCatalog }) {
       </section>
 
       <section className="deal-list" aria-live="polite">
-        <div className="deal-results"><strong>{filtered.length}</strong><span>matching transactions</span></div>
+        <div className="deal-results"><strong>{filtered.length}</strong><span>{lens === "structure" ? "all-stage structure benchmarks" : "candidate-linked transactions"}</span></div>
         {filtered.map((deal) => (
-          <article className="deal-card" key={deal.id}>
+          <article className={`deal-card ${deal.candidateCompanies.length ? "candidate-linked" : ""}`} key={deal.id}>
             <div className="deal-card-heading">
               <div className="deal-date"><strong>{new Date(`${deal.date}T12:00:00`).toLocaleDateString("en-US", { month: "short", year: "numeric" })}</strong><span>{deal.structure}</span></div>
               <div className="deal-title"><h3>{deal.asset}</h3><p>{deal.seller} <ArrowIcon /> {deal.buyer}</p></div>
@@ -776,7 +846,11 @@ function DealBenchmarksView({ catalog }: { catalog: DealBenchmarkCatalog }) {
 
             <div className="deal-tags">
               <span>{deal.therapyArea}</span>
-              <span>{deal.stage}</span>
+              <span>{deal.stageGroup}</span>
+              <span>{deal.marketScope}</span>
+              {deal.stage !== deal.stageGroup && <span>{deal.stage} at signing</span>}
+              {deal.candidateCompanies.map((candidate) => <span className="candidate-tag" key={candidate}>Candidate owner · {candidate}</span>)}
+              {deal.candidateAssets.map((asset) => <span className="candidate-asset-tag" key={asset}>Screened asset · {asset}</span>)}
               {deal.salesAtDealUsdMm !== null && (
                 <span>
                   {dealMoney(deal.salesAtDealUsdMm)} sales at signing
@@ -804,14 +878,13 @@ function DealBenchmarksView({ catalog }: { catalog: DealBenchmarkCatalog }) {
       </section>
 
       <section className="deal-method">
-        <p className="eyebrow">How to use this set</p>
-        <h2>Normalize before negotiating</h2>
-        <div>
-          <p><b>01</b>Separate cash at close from milestones, CVRs and royalties.</p>
-          <p><b>02</b>Adjust for stage, rights geography, debt, supply, working capital and required launch spend.</p>
-          <p><b>03</b>For marketed assets, compare price to net sales and contribution profit—not gross sales alone.</p>
-          <p><b>04</b>Model reversion, termination, change-of-control and supply-transfer terms before valuing the back end.</p>
-        </div>
+        <p className="eyebrow">Use the database</p>
+        <h2>{lens === "structure" ? "Benchmark the proposed structure" : "Read the owner's deal pattern"}</h2>
+        {lens === "structure" ? (
+          <div><p><b>01</b>Filter to comparable stage, rights and market type.</p><p><b>02</b>Separate cash at close from milestones, CVRs and royalties.</p><p><b>03</b>Normalize supply, cost share, debt and launch obligations.</p><p><b>04</b>Value termination, reversion and change-of-control terms.</p></div>
+        ) : (
+          <div><p><b>01</b>Review both acquisitions and out-licenses.</p><p><b>02</b>Include every product, not only the screened asset.</p><p><b>03</b>Compare pipeline appetite with commercial behavior.</p><p><b>04</b>Use zero activity as a diligence flag, not a conclusion.</p></div>
+        )}
       </section>
     </div>
   );
