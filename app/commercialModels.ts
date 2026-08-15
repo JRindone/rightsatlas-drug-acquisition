@@ -5,6 +5,7 @@ export type TeamRole = {
 
 export type CommercialModel = {
   indication?: string;
+  archetype?: string;
   confidence: "High" | "Medium" | "Directional";
   field: TeamRole[];
   inside: TeamRole[];

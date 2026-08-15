@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { CANDIDATE_DILIGENCE } from "./candidateDiligence";
 import { COMMERCIAL_MODELS, teamTotal, type CommercialModel } from "./commercialModels";
 import { TOP20_DILIGENCE, type AssetDiligence } from "./diligence";
 import { SPECIALTY_CANDIDATE_MODELS } from "./specialtyCandidateModels";
+import { universeCommercialModel } from "./universeCommercialModels";
+import { universeDiligence } from "./universeDiligence";
 
 type StrategyKey = "core" | "specialty";
 type View = "situation" | "targets" | "database" | "deals" | "saved";
@@ -206,7 +208,7 @@ function diligenceFor(target: Target) {
 
 function productDiligence(product: Product, catalog: Catalog) {
   const rankedTarget = catalog.targets.specialty.find((target) => target.asset === product.strategyAsset || target.asset === product.brand);
-  return rankedTarget ? diligenceFor(rankedTarget) : CANDIDATE_DILIGENCE[product.brand];
+  return rankedTarget ? diligenceFor(rankedTarget) : CANDIDATE_DILIGENCE[product.brand] ?? universeDiligence(product);
 }
 
 function reportedRevenue(target: Target) {
@@ -305,19 +307,55 @@ function specialtyDatabase(catalog: Catalog) {
       specialtyScore: target.score,
     } satisfies Product;
   });
-
   const rankedAssets = new Set(ranked.map((product) => product.strategyAsset));
   const broader = catalog.universe
     .filter((product) => product.mechanism && (!product.strategyAsset || !rankedAssets.has(product.strategyAsset)))
     .sort((a, b) => specialtySignalScore(b) - specialtySignalScore(a) || a.brand.localeCompare(b.brand))
     .slice(0, 61)
     .map((product) => ({ ...product, coreRank: null, coreScore: null, specialtyRank: null, specialtyScore: null }));
-
   return [...ranked, ...broader];
 }
 
+function mechanismDatabase(catalog: Catalog) {
+  return catalog.universe
+    .filter((product) => product.mechanism)
+    .sort((a, b) => a.brand.localeCompare(b.brand) || a.company.localeCompare(b.company));
+}
+
+const COMPANY_KEYS: Array<[RegExp, string]> = [
+  [/merck kgaa|emd serono/i, "Merck KGaA"], [/abbvie|aliada therapeutics/i, "AbbVie"], [/amgen/i, "Amgen"],
+  [/amneal/i, "Amneal"], [/ani pharmaceutical|alimera/i, "ANI"], [/astrazeneca|alexion/i, "AstraZeneca"],
+  [/biogen/i, "Biogen"], [/biofrontera/i, "Biofrontera"], [/bristol.myers|bristol myers/i, "BMS"],
+  [/catalyst pharmaceutical/i, "Catalyst"], [/chiesi/i, "Chiesi"], [/collegium/i, "Collegium"],
+  [/cormedix/i, "CorMedix"], [/daiichi/i, "Daiichi Sankyo"], [/gilead/i, "Gilead"],
+  [/idorsia/i, "Idorsia"], [/janssen|johnson & johnson innovative medicine/i, "Janssen"], [/journey medical/i, "Journey Medical"],
+  [/lexicon/i, "Lexicon"], [/mannkind/i, "MannKind"], [/medicure/i, "Medicure"],
+  [/merck sharp|merck & co|^merck$/i, "Merck"], [/novartis/i, "Novartis"], [/opko|eirgen/i, "OPKO"],
+  [/organon/i, "Organon"], [/orphalan/i, "Orphalan"], [/otsuka/i, "Otsuka"],
+  [/regeneron/i, "Regeneron"], [/sanofi/i, "Sanofi"], [/sun pharma|sun pharmaceutical/i, "Sun Pharma"],
+  [/takeda/i, "Takeda"], [/teva/i, "Teva"], [/vanda/i, "Vanda"], [/viatris|mylan/i, "Viatris"],
+  [/xeris/i, "Xeris"], [/agepha/i, "AGEPHA"], [/hisamitsu|noven/i, "Hisamitsu"], [/bioxcel/i, "BioXcel"],
+];
+
+function companyKey(value: string) {
+  return COMPANY_KEYS.find(([pattern]) => pattern.test(value))?.[1] ?? null;
+}
+
+function dealHistoryByCompany(catalog: DealBenchmarkCatalog) {
+  const result = new Map<string, DealBenchmark[]>();
+  for (const deal of catalog.deals) {
+    const keys = new Set([deal.buyer, deal.seller, ...deal.candidateCompanies].map(companyKey).filter((key): key is string => Boolean(key)));
+    keys.forEach((key) => result.set(key, [...(result.get(key) ?? []), deal]));
+  }
+  return result;
+}
+
+function explicitCommercialModel(product: Product) {
+  return COMMERCIAL_MODELS[product.strategyAsset ?? product.brand] ?? COMMERCIAL_MODELS[product.brand] ?? SPECIALTY_CANDIDATE_MODELS[product.brand];
+}
+
 function commercialModelForProduct(product: Product) {
-  return COMMERCIAL_MODELS[product.brand] ?? SPECIALTY_CANDIDATE_MODELS[product.brand];
+  return explicitCommercialModel(product) ?? universeCommercialModel(product);
 }
 
 function SearchIcon() {
@@ -394,15 +432,16 @@ function SituationView({ catalog, onOpenTargets, onOpenDatabase }: { catalog: Ca
             <span>U.S. commercial products screened for specialty fit</span>
           </div>
           <div className="funnel-flow" aria-hidden="true"><i /><i /></div>
-          <div className="funnel-node funnel-stage stage-two">
+          <button className="funnel-node funnel-stage stage-two" onClick={onOpenDatabase}>
             <strong>635</strong>
-            <span>Mechanism-classified products evaluated for a focused team</span>
-          </div>
+            <span>Mechanism-classified products with a modeled U.S. commercial team</span>
+            <em>Browse full database <ArrowIcon /></em>
+          </button>
           <div className="funnel-flow compact" aria-hidden="true"><i /><i /></div>
           <button className="funnel-node funnel-stage stage-three" onClick={onOpenDatabase}>
             <strong>81</strong>
-            <span>Specialty candidates with concentrated call points or support needs</span>
-            <em>Browse specialty database <ArrowIcon /></em>
+            <span>Higher-interest specialty candidates with deeper product research</span>
+            <em>Review researched subset <ArrowIcon /></em>
           </button>
           <div className="funnel-flow compact" aria-hidden="true"><i /><i /></div>
           <button className="funnel-node funnel-stage stage-four" onClick={onOpenTargets}>
@@ -619,61 +658,107 @@ function TargetsView({
   );
 }
 
-function DatabaseView({ catalog, onViewTarget }: { catalog: Catalog; onViewTarget: (asset: string) => void }) {
+function DatabaseView({ catalog, dealCatalog, onViewTarget }: { catalog: Catalog; dealCatalog: DealBenchmarkCatalog; onViewTarget: (asset: string) => void }) {
+  const [scope, setScope] = useState<"mechanism" | "specialty">("mechanism");
   const [query, setQuery] = useState("");
   const [route, setRoute] = useState("All routes");
+  const [modelScope, setModelScope] = useState("All team models");
   const [ownership, setOwnership] = useState("All ownership");
   const [disclosure, setDisclosure] = useState("All revenue facts");
+  const [dealActivity, setDealActivity] = useState("All deal activity");
   const [visible, setVisible] = useState(48);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const specialtyProducts = useMemo(() => specialtyDatabase(catalog), [catalog]);
-  const routes = useMemo(() => ["All routes", ...Array.from(new Set(specialtyProducts.map((product) => product.route).filter(Boolean))).sort()], [specialtyProducts]);
+  const mechanismProducts = useMemo(() => mechanismDatabase(catalog), [catalog]);
+  const products = scope === "mechanism" ? mechanismProducts : specialtyProducts;
+  const ownerDeals = useMemo(() => dealHistoryByCompany(dealCatalog), [dealCatalog]);
+  const dealsFor = useCallback((product: Product) => {
+    const diligence = productDiligence(product, catalog);
+    return ownerDeals.get(companyKey(diligence.parent) ?? companyKey(product.company) ?? "") ?? [];
+  }, [catalog, ownerDeals]);
+  const routes = useMemo(() => ["All routes", ...Array.from(new Set(products.map((product) => product.route).filter(Boolean))).sort()], [products]);
   const exactUsCount = useMemo(() => specialtyProducts.filter((product) => productDiligence(product, catalog)?.disclosure === "Exact U.S.").length, [specialtyProducts, catalog]);
+  const mappedOwnershipCount = useMemo(() => mechanismProducts.filter((product) => productDiligence(product, catalog).ownership !== "Not verified").length, [mechanismProducts, catalog]);
+  const researchedModelCount = useMemo(() => mechanismProducts.filter((product) => explicitCommercialModel(product)).length, [mechanismProducts]);
+  const linkedOwners = useMemo(() => new Set(mechanismProducts.map((product) => companyKey(product.company)).filter((key) => key && ownerDeals.has(key))).size, [mechanismProducts, ownerDeals]);
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    return specialtyProducts.filter((product) => {
+    return products.filter((product) => {
       const diligence = productDiligence(product, catalog);
       const model = commercialModelForProduct(product);
+      const history = ownerDeals.get(companyKey(diligence.parent) ?? companyKey(product.company) ?? "") ?? [];
       const matchesRoute = route === "All routes" || product.route === route;
-      const matchesOwnership = ownership === "All ownership" || diligence?.ownership === ownership;
-      const matchesDisclosure = disclosure === "All revenue facts" || diligence?.disclosure === disclosure;
-      const haystack = [product.brand, product.ingredient, product.company, product.mechanism, product.modality, diligence?.parent, diligence?.rightsHolder, diligence?.ticker, diligence?.latestDisplay, model?.indication, model?.confidence, ...(model?.geographies ?? []), ...(model?.field.map((role) => role.role) ?? []), ...(model?.inside.map((role) => role.role) ?? [])].join(" ").toLowerCase();
-      return matchesRoute && matchesOwnership && matchesDisclosure && (!needle || haystack.includes(needle));
+      const researchedModel = Boolean(explicitCommercialModel(product));
+      const matchesModelScope = modelScope === "All team models" || (modelScope === "Product-specific research" ? researchedModel : !researchedModel);
+      const matchesOwnership = ownership === "All ownership" || diligence.ownership === ownership;
+      const matchesDisclosure = disclosure === "All revenue facts" || diligence.disclosure === disclosure;
+      const matchesDeals = dealActivity === "All deal activity" || (dealActivity === "Matched owner deals" ? history.length > 0 : history.length === 0);
+      const haystack = [product.brand, product.ingredient, product.company, product.mechanism, product.modality, diligence.parent, diligence.rightsHolder, diligence.ticker, diligence.latestDisplay, model.indication, model.archetype, model.confidence, ...history.flatMap((deal) => [deal.asset, deal.buyer, deal.seller, deal.structure]), ...model.geographies, ...model.field.map((role) => role.role), ...model.inside.map((role) => role.role)].join(" ").toLowerCase();
+      return matchesRoute && matchesModelScope && matchesOwnership && matchesDisclosure && matchesDeals && (!needle || haystack.includes(needle));
     }).sort((a, b) => {
+      if (scope === "mechanism") {
+        const dealDelta = dealsFor(b).length - dealsFor(a).length;
+        if (dealDelta) return dealDelta;
+        return a.brand.localeCompare(b.brand);
+      }
       const rankA = a.specialtyRank;
       const rankB = b.specialtyRank;
       if (rankA !== null || rankB !== null) return (rankA ?? 999) - (rankB ?? 999);
       return specialtySignalScore(b) - specialtySignalScore(a) || a.brand.localeCompare(b.brand);
     });
-  }, [specialtyProducts, catalog, query, route, ownership, disclosure]);
+  }, [products, catalog, scope, query, route, modelScope, ownership, disclosure, dealActivity, ownerDeals, dealsFor]);
 
   function resetResults() {
     setVisible(48);
   }
 
+  function switchScope(nextScope: "mechanism" | "specialty") {
+    setScope(nextScope);
+    setOwnership("All ownership");
+    setDisclosure("All revenue facts");
+    setDealActivity("All deal activity");
+    setModelScope("All team models");
+    setSelectedProduct(null);
+    resetResults();
+  }
+
+  const selectedDiligence = selectedProduct ? productDiligence(selectedProduct, catalog) : null;
+  const selectedModel = selectedProduct ? commercialModelForProduct(selectedProduct) : null;
+  const selectedDeals = selectedProduct ? dealsFor(selectedProduct) : [];
+
   return (
     <div className="view-stack">
       <section className="page-intro compact">
-        <div><p className="eyebrow">81-asset diligence set</p><h1>Specialty product database</h1><p>Compare rights holder, revenue, modeled U.S. team and priority geographies for every candidate.</p><p className="fact-standard">{exactUsCount} exact U.S. revenue disclosures · team estimates show source and method</p></div>
-        <div className="intro-stat"><strong>{filtered.length.toLocaleString()}</strong><span>of 81 candidates</span></div>
+        {scope === "mechanism" ? (
+          <div><p className="eyebrow">635 mechanism-classified products</p><h1>Mechanism-classified database</h1><p>Search product, holder, mechanism, modeled team and target geographies.</p><p className="fact-standard">{researchedModelCount} product-specific models · {(mechanismProducts.length - researchedModelCount).toLocaleString()} archetype estimates · {mappedOwnershipCount} ownership mappings · {linkedOwners} owners with matched deals</p></div>
+        ) : (
+          <div><p className="eyebrow">81-asset diligence set</p><h1>Specialty product database</h1><p>Compare rights holder, revenue, modeled U.S. team and priority geographies.</p><p className="fact-standard">{exactUsCount} exact U.S. revenue disclosures · team estimates show source and method</p></div>
+        )}
+        <div className="intro-stat"><strong>{filtered.length.toLocaleString()}</strong><span>of {products.length} products</span></div>
       </section>
+
+      <section className="database-scope-switch" aria-label="Product database scope">
+        <button className={scope === "mechanism" ? "active" : ""} onClick={() => switchScope("mechanism")}><strong>635</strong><span>Mechanism-classified</span><small>Full product universe</small></button>
+        <button className={scope === "specialty" ? "active" : ""} onClick={() => switchScope("specialty")}><strong>81</strong><span>Specialty candidates</span><small>Revenue + team models</small></button>
+      </section>
+
       <section className="target-tools database-tools">
-        <label className="search-field"><SearchIcon /><input value={query} onChange={(event) => { setQuery(event.target.value); resetResults(); }} placeholder="Search product, rights holder, parent or mechanism" /></label>
+        <label className="search-field"><SearchIcon /><input value={query} onChange={(event) => { setQuery(event.target.value); resetResults(); }} placeholder="Search product, holder, mechanism or deal" /></label>
         <select value={route} onChange={(event) => { setRoute(event.target.value); resetResults(); }} aria-label="Route filter">
           {routes.map((item) => <option key={item}>{item}</option>)}
         </select>
-        <select value={ownership} onChange={(event) => { setOwnership(event.target.value); resetResults(); }} aria-label="Ownership filter">
-          <option>All ownership</option>
-          <option>Public parent</option>
-          <option>Private</option>
+        <select value={modelScope} onChange={(event) => { setModelScope(event.target.value); resetResults(); }} aria-label="Commercial model depth filter">
+          <option>All team models</option>
+          <option>Product-specific research</option>
+          <option>Archetype estimate</option>
         </select>
-        <select value={disclosure} onChange={(event) => { setDisclosure(event.target.value); resetResults(); }} aria-label="Revenue disclosure filter">
-          <option>All revenue facts</option>
-          <option>Exact U.S.</option>
-          <option>Broader disclosure</option>
-          <option>Not disclosed</option>
-          <option>Pre-revenue</option>
+        <select value={dealActivity} onChange={(event) => { setDealActivity(event.target.value); resetResults(); }} aria-label="Owner deal activity filter">
+          <option>All deal activity</option>
+          <option>Matched owner deals</option>
+          <option>No matched owner deals</option>
         </select>
+        <select value={ownership} onChange={(event) => { setOwnership(event.target.value); resetResults(); }} aria-label="Ownership filter"><option>All ownership</option><option>Public parent</option><option>Private</option><option>Not verified</option></select>
+        <select value={disclosure} onChange={(event) => { setDisclosure(event.target.value); resetResults(); }} aria-label="Revenue disclosure filter"><option>All revenue facts</option><option>Exact U.S.</option><option>Broader disclosure</option><option>Not disclosed</option><option>Pre-revenue</option></select>
       </section>
       <section className="database-list">
         {filtered.slice(0, visible).map((product) => {
@@ -682,15 +767,16 @@ function DatabaseView({ catalog, onViewTarget }: { catalog: Catalog; onViewTarge
           const diligence = productDiligence(product, catalog);
           const model = commercialModelForProduct(product);
           const modeledTotal = model ? teamTotal(model.field) + teamTotal(model.inside) : null;
+          const history = dealsFor(product);
           return (
             <article className={`database-row ${rank ? "linked" : ""}`} key={product.id}>
-              <div className="database-name"><div>{rank ? <b>#{rank}</b> : <b>Screened</b>}<h3>{product.brand}</h3></div><span>{product.ingredient}</span></div>
-              <div className="database-owner"><span className="row-label">U.S. rights holder</span><strong>{diligence?.rightsHolder ?? product.company}</strong><small>{diligence?.ownership}{diligence?.ticker ? ` · ${diligence.ticker}` : ""}</small></div>
-              <div className="database-revenue"><span className="row-label">Latest reported revenue</span><strong>{diligence?.latestDisplay ?? "Research pending"}</strong><small>{diligence?.latestPeriod}</small></div>
+              <div className="database-name"><div>{rank ? <b>#{rank}</b> : <b>{scope === "mechanism" ? "Mechanism" : "Screened"}</b>}<h3>{product.brand}</h3></div><span>{product.ingredient}</span></div>
+              <div className="database-owner"><span className="row-label">{diligence.holderBasis === "FDA application holder" ? "FDA application holder" : "U.S. rights holder"}</span><strong>{diligence.rightsHolder}</strong><small>{diligence.ownership}{diligence.ticker ? ` · ${diligence.ticker}` : ""}</small></div>
+              <div className="database-revenue"><span className="row-label">Latest reported revenue</span><strong>{diligence.latestDisplay}</strong><small>{diligence.latestPeriod}{history.length ? ` · ${history.length} owner deal${history.length === 1 ? "" : "s"}` : ""}</small></div>
               <div className="database-product"><span className="row-label">Product</span><strong>{product.route} · {product.modality}</strong><small>{short(product.mechanism ?? "Not classified", 74)}</small></div>
               <div className="database-row-action">
-                {diligence && <span className={`disclosure-badge ${diligence.disclosure.toLowerCase().replaceAll(" ", "-")}`}>{diligence.disclosure}</span>}
-                <button className="strategy-link" onClick={() => setSelectedProduct(product)}><span>Review{modeledTotal ? ` · ${modeledTotal} roles` : ""}{rank && score ? ` · ${score} fit` : ""}</span><ArrowIcon /></button>
+                <span className={`model-depth-badge ${explicitCommercialModel(product) ? "researched" : "archetype"}`}>{explicitCommercialModel(product) ? "Researched" : "Archetype"}</span>
+                <button className="strategy-link" onClick={() => setSelectedProduct(product)}><span>Review{modeledTotal ? ` · ${modeledTotal} roles` : history.length ? ` · ${history.length} deals` : ""}{rank && score ? ` · ${score} fit` : ""}</span><ArrowIcon /></button>
               </div>
             </article>
           );
@@ -698,15 +784,16 @@ function DatabaseView({ catalog, onViewTarget }: { catalog: Catalog; onViewTarge
         {!filtered.length && <div className="empty-state"><h2>No matching candidates</h2><p>Broaden the filters or search.</p></div>}
       </section>
       {visible < filtered.length && <button className="button load-more" onClick={() => setVisible((count) => count + 48)}>Show 48 more</button>}
-      {selectedProduct && productDiligence(selectedProduct, catalog) && commercialModelForProduct(selectedProduct) && (
+      {selectedProduct && selectedDiligence && selectedModel ? (
         <CandidateDrawer
           product={selectedProduct}
-          diligence={productDiligence(selectedProduct, catalog)!}
-          model={commercialModelForProduct(selectedProduct)!}
+          diligence={selectedDiligence}
+          model={selectedModel}
+          deals={selectedDeals}
           onClose={() => setSelectedProduct(null)}
           onViewTarget={selectedProduct.specialtyRank && selectedProduct.strategyAsset ? () => onViewTarget(selectedProduct.strategyAsset!) : undefined}
         />
-      )}
+      ) : selectedProduct && selectedDiligence ? <ProductDrawer product={selectedProduct} diligence={selectedDiligence} deals={selectedDeals} onClose={() => setSelectedProduct(null)} /> : null}
     </div>
   );
 }
@@ -969,7 +1056,63 @@ function RevenueHistory({ diligence }: { diligence: AssetDiligence }) {
   );
 }
 
-function CandidateDrawer({ product, diligence, model, onClose, onViewTarget }: { product: Product; diligence: AssetDiligence; model: CommercialModel; onClose: () => void; onViewTarget?: () => void }) {
+function DealHistoryPanel({ deals }: { deals: DealBenchmark[] }) {
+  return (
+    <section className="owner-deal-history">
+      <div className="owner-deal-heading"><span>Owner transaction history</span><strong>{deals.length} matched deal{deals.length === 1 ? "" : "s"}</strong></div>
+      {deals.length ? (
+        <div className="owner-deal-list">
+          {deals.map((deal) => (
+            <article key={deal.id}>
+              <div><span>{new Date(`${deal.date}T12:00:00`).toLocaleDateString("en-US", { month: "short", year: "numeric" })}</span><b>{deal.structure}</b></div>
+              <h4>{deal.asset}</h4>
+              <p>{deal.seller} <ArrowIcon /> {deal.buyer}</p>
+              <dl><div><dt>Stage</dt><dd>{deal.stageGroup}</dd></div><div><dt>Guaranteed</dt><dd>{deal.guaranteedDisplay}</dd></div></dl>
+              <a href={deal.sourceUrl} target="_blank" rel="noreferrer">Review terms ↗</a>
+            </article>
+          ))}
+        </div>
+      ) : <p className="owner-deal-empty">No owner transaction matched the current central database.</p>}
+    </section>
+  );
+}
+
+function ProductDrawer({ product, diligence, deals, onClose }: { product: Product; diligence: AssetDiligence; deals: DealBenchmark[]; onClose: () => void }) {
+  useEffect(() => {
+    const close = (event: KeyboardEvent) => event.key === "Escape" && onClose();
+    window.addEventListener("keydown", close);
+    document.body.classList.add("overlay-open");
+    return () => {
+      window.removeEventListener("keydown", close);
+      document.body.classList.remove("overlay-open");
+    };
+  }, [onClose]);
+
+  return (
+    <div className="overlay" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+      <aside className="detail-drawer candidate-drawer" role="dialog" aria-modal="true" aria-label={`${product.brand} ownership and revenue facts`}>
+        <div className="drawer-header">
+          <div><p className="eyebrow">Mechanism-classified product</p><h2>{product.brand}</h2><span>{product.ingredient}</span></div>
+          <button className="close-button" onClick={onClose} aria-label="Close"><CloseIcon /></button>
+        </div>
+        <div className="drawer-summary">
+          <div><span>Reported revenue</span><strong>{diligence.latestDisplay}</strong><small>{diligence.latestPeriod}</small></div>
+          <div><span>{diligence.holderBasis === "FDA application holder" ? "FDA application holder" : "U.S. rights holder"}</span><a href={diligence.companyUrl} target="_blank" rel="noreferrer">{diligence.rightsHolder} ↗</a><small>{diligence.ownership}{diligence.ticker ? ` · ${diligence.ticker}` : ""}</small></div>
+        </div>
+        <div className="drawer-body">
+          <DetailRow label="Ownership"><b>{diligence.ownership}</b>{diligence.ticker ? ` · ${diligence.ticker}` : ""}<br />Parent: {diligence.parent}</DetailRow>
+          <DetailRow label="Product"><span className="inline-chips"><b>{product.modality}</b><b>{product.route}</b><b>{product.dosageForm}</b></span></DetailRow>
+          <DetailRow label="Mechanism">{product.mechanism}</DetailRow>
+          <DetailRow label="Market status">{product.marketStatus}</DetailRow>
+          <RevenueHistory diligence={diligence} />
+          <DealHistoryPanel deals={deals} />
+        </div>
+      </aside>
+    </div>
+  );
+}
+
+function CandidateDrawer({ product, diligence, model, deals, onClose, onViewTarget }: { product: Product; diligence: AssetDiligence; model: CommercialModel; deals: DealBenchmark[]; onClose: () => void; onViewTarget?: () => void }) {
   useEffect(() => {
     const close = (event: KeyboardEvent) => event.key === "Escape" && onClose();
     window.addEventListener("keydown", close);
@@ -984,12 +1127,12 @@ function CandidateDrawer({ product, diligence, model, onClose, onViewTarget }: {
     <div className="overlay" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
       <aside className="detail-drawer candidate-drawer" role="dialog" aria-modal="true" aria-label={`${product.brand} commercial model and facts`}>
         <div className="drawer-header">
-          <div><p className="eyebrow">Specialty candidate</p><h2>{product.brand}</h2><span>{product.ingredient}</span></div>
+          <div><p className="eyebrow">{model.archetype ? "Mechanism-classified product" : "Specialty candidate"}</p><h2>{product.brand}</h2><span>{product.ingredient}</span></div>
           <button className="close-button" onClick={onClose} aria-label="Close"><CloseIcon /></button>
         </div>
         <div className="drawer-summary">
           <div><span>Reported revenue</span><strong>{diligence.latestDisplay}</strong><small>{diligence.latestPeriod}</small></div>
-          <div><span>U.S. rights holder</span><a href={diligence.companyUrl} target="_blank" rel="noreferrer">{diligence.rightsHolder} ↗</a><small>{diligence.ownership}{diligence.ticker ? ` · ${diligence.ticker}` : ""}</small></div>
+          <div><span>{diligence.holderBasis === "FDA application holder" ? "FDA application holder" : "U.S. rights holder"}</span><a href={diligence.companyUrl} target="_blank" rel="noreferrer">{diligence.rightsHolder} ↗</a><small>{diligence.ownership}{diligence.ticker ? ` · ${diligence.ticker}` : ""}</small></div>
         </div>
         <div className="drawer-body">
           <DetailRow label="Ownership"><b>{diligence.ownership}</b>{diligence.ticker ? ` · ${diligence.ticker}` : ""}<br />Parent: {diligence.parent}</DetailRow>
@@ -998,6 +1141,7 @@ function CandidateDrawer({ product, diligence, model, onClose, onViewTarget }: {
           <DetailRow label="Product"><span className="inline-chips"><b>{product.modality}</b><b>{product.route}</b><b>{product.dosageForm}</b></span><br />{product.mechanism}</DetailRow>
           <RevenueHistory diligence={diligence} />
           <CommercialModelDetail model={model} />
+          <DealHistoryPanel deals={deals} />
         </div>
         {onViewTarget && <div className="drawer-actions"><button className="button primary" onClick={onViewTarget}>Open ranked target brief</button></div>}
       </aside>
@@ -1012,7 +1156,7 @@ function CommercialModelDetail({ model }: { model: CommercialModel }) {
   return (
     <section className="commercial-model-detail">
       <div className="commercial-model-heading">
-        <div><span>Modeled standalone U.S. team</span><strong>{fieldTotal + insideTotal} roles</strong></div>
+        <div><span>{model.archetype ?? "Product-specific research"}</span><strong>{fieldTotal + insideTotal} roles</strong><small>Modeled standalone U.S. team</small></div>
         <b className={`confidence-badge ${model.confidence.toLowerCase()}`}>{model.confidence} confidence</b>
       </div>
       <div className="team-role-groups">
@@ -1259,7 +1403,7 @@ export function AcquisitionApp() {
       <main className="page-shell">
         {view === "situation" && <SituationView catalog={catalog} onOpenTargets={() => changeView("targets")} onOpenDatabase={() => changeView("database")} />}
         {view === "targets" && <TargetsView catalog={catalog} targets={targets} strategy={strategy} savedIds={savedIds} compareIds={activeCompareIds} onOpen={setSelectedTargetId} onSave={toggleSaved} onCompare={toggleCompare} />}
-        {view === "database" && <DatabaseView catalog={catalog} onViewTarget={viewTarget} />}
+        {view === "database" && <DatabaseView catalog={catalog} dealCatalog={dealCatalog} onViewTarget={viewTarget} />}
         {view === "deals" && <DealBenchmarksView catalog={dealCatalog} />}
         {view === "saved" && <SavedView catalog={catalog} targets={targets} savedIds={savedIds} compareIds={activeCompareIds} onOpen={setSelectedTargetId} onSave={toggleSaved} onCompare={toggleCompare} onBrowse={() => changeView("targets")} />}
       </main>

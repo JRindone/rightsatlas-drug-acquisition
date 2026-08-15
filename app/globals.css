@@ -1337,6 +1337,52 @@ button.funnel-node {
   margin-top: -26px;
 }
 
+.database-scope-switch {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 1fr 1fr;
+  margin-top: -32px;
+}
+
+.database-scope-switch button {
+  background: var(--panel);
+  border: 1px solid var(--line-strong);
+  color: var(--text);
+  cursor: pointer;
+  min-width: 0;
+  padding: 13px;
+  text-align: left;
+}
+
+.database-scope-switch button.active {
+  background: var(--panel-strong);
+  border-color: var(--accent);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.database-scope-switch strong,
+.database-scope-switch span,
+.database-scope-switch small {
+  display: block;
+}
+
+.database-scope-switch strong {
+  color: var(--accent);
+  font-size: 20px;
+}
+
+.database-scope-switch span {
+  font-size: 10px;
+  font-weight: 800;
+  margin-top: 2px;
+}
+
+.database-scope-switch small {
+  color: var(--faint);
+  font-size: 8px;
+  margin-top: 4px;
+}
+
 .database-list {
   border-top: 1px solid var(--line);
   margin-top: -26px;
@@ -1408,6 +1454,26 @@ button.funnel-node {
 
 .database-row-action .disclosure-badge {
   align-self: flex-start;
+}
+
+.database-row-action .owner-deals {
+  color: var(--teal);
+}
+
+.model-depth-badge {
+  align-self: flex-start;
+  border: 1px solid var(--line-strong);
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  padding: 5px 7px;
+  text-transform: uppercase;
+}
+
+.model-depth-badge.researched {
+  border-color: rgba(88, 185, 148, 0.42);
+  color: var(--teal);
 }
 
 .database-row-action .strategy-link {
@@ -2155,6 +2221,13 @@ button.funnel-node {
   font-size: 22px;
 }
 
+.commercial-model-heading small {
+  color: var(--muted);
+  display: block;
+  font-size: 9px;
+  margin-top: 2px;
+}
+
 .confidence-badge {
   border: 1px solid rgba(88, 185, 148, 0.42);
   color: var(--teal);
@@ -2277,6 +2350,114 @@ button.funnel-node {
   font-weight: 700;
   margin-top: 5px;
   text-decoration: none;
+}
+
+.owner-deal-history {
+  border-bottom: 1px solid var(--line);
+  padding: 22px 0;
+}
+
+.owner-deal-heading {
+  align-items: baseline;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.owner-deal-heading span {
+  color: var(--teal);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.owner-deal-heading strong {
+  font-size: 11px;
+}
+
+.owner-deal-list {
+  display: grid;
+  gap: 8px;
+}
+
+.owner-deal-list article {
+  background: var(--panel-soft);
+  border: 1px solid var(--line);
+  padding: 12px;
+}
+
+.owner-deal-list article > div:first-child {
+  align-items: center;
+  display: flex;
+  gap: 7px;
+  justify-content: space-between;
+}
+
+.owner-deal-list article > div:first-child span,
+.owner-deal-list article > div:first-child b {
+  color: var(--faint);
+  font-size: 8px;
+  text-transform: uppercase;
+}
+
+.owner-deal-list h4 {
+  font-size: 14px;
+  margin: 8px 0 3px;
+}
+
+.owner-deal-list p {
+  align-items: center;
+  color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 9px;
+  gap: 5px;
+  margin: 0;
+}
+
+.owner-deal-list p svg {
+  color: var(--teal);
+  height: 11px;
+  width: 11px;
+}
+
+.owner-deal-list dl {
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 0.7fr 1.3fr;
+  margin: 10px 0 0;
+  padding-top: 9px;
+}
+
+.owner-deal-list dt {
+  color: var(--faint);
+  font-size: 7px;
+  text-transform: uppercase;
+}
+
+.owner-deal-list dd {
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.4;
+  margin: 2px 0 0;
+}
+
+.owner-deal-list a {
+  color: var(--accent);
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 800;
+  margin-top: 10px;
+  text-decoration: none;
+}
+
+.owner-deal-empty {
+  color: var(--muted);
+  font-size: 11px;
+  margin: 0;
 }
 
 .diligence-heading {
@@ -2890,7 +3071,7 @@ button.funnel-node {
   }
 
   .database-tools {
-    grid-template-columns: minmax(300px, 1fr) repeat(3, minmax(150px, 0.32fr));
+    grid-template-columns: minmax(260px, 1fr) repeat(5, minmax(118px, 0.26fr));
   }
 
   .database-tools .search-field {

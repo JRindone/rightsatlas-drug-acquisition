@@ -12,9 +12,10 @@ export type DiligenceSource = {
 };
 
 export type AssetDiligence = {
-  ownership: "Public parent" | "Private";
+  ownership: "Public parent" | "Private" | "Not verified";
   parent: string;
   rightsHolder: string;
+  holderBasis?: "Verified U.S. rights" | "FDA application holder";
   ticker?: string;
   companyUrl: string;
   latestDisplay: string;
