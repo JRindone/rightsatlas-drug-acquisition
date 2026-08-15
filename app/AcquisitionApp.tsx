@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { CANDIDATE_DILIGENCE } from "./candidateDiligence";
 import { COMMERCIAL_MODELS, teamTotal, type CommercialModel } from "./commercialModels";
 import { TOP20_DILIGENCE, type AssetDiligence } from "./diligence";
+import { SPECIALTY_CANDIDATE_MODELS } from "./specialtyCandidateModels";
 
 type StrategyKey = "core" | "specialty";
 type View = "situation" | "targets" | "database" | "deals" | "saved";
@@ -308,6 +309,10 @@ function specialtyDatabase(catalog: Catalog) {
     .map((product) => ({ ...product, coreRank: null, coreScore: null, specialtyRank: null, specialtyScore: null }));
 
   return [...ranked, ...broader];
+}
+
+function commercialModelForProduct(product: Product) {
+  return COMMERCIAL_MODELS[product.brand] ?? SPECIALTY_CANDIDATE_MODELS[product.brand];
 }
 
 function SearchIcon() {
@@ -623,10 +628,11 @@ function DatabaseView({ catalog, onViewTarget }: { catalog: Catalog; onViewTarge
     const needle = query.trim().toLowerCase();
     return specialtyProducts.filter((product) => {
       const diligence = productDiligence(product, catalog);
+      const model = commercialModelForProduct(product);
       const matchesRoute = route === "All routes" || product.route === route;
       const matchesOwnership = ownership === "All ownership" || diligence?.ownership === ownership;
       const matchesDisclosure = disclosure === "All revenue facts" || diligence?.disclosure === disclosure;
-      const haystack = [product.brand, product.ingredient, product.company, product.mechanism, product.modality, diligence?.parent, diligence?.rightsHolder, diligence?.ticker, diligence?.latestDisplay].join(" ").toLowerCase();
+      const haystack = [product.brand, product.ingredient, product.company, product.mechanism, product.modality, diligence?.parent, diligence?.rightsHolder, diligence?.ticker, diligence?.latestDisplay, model?.indication, model?.confidence, ...(model?.geographies ?? []), ...(model?.field.map((role) => role.role) ?? []), ...(model?.inside.map((role) => role.role) ?? [])].join(" ").toLowerCase();
       return matchesRoute && matchesOwnership && matchesDisclosure && (!needle || haystack.includes(needle));
     }).sort((a, b) => {
       const rankA = a.specialtyRank;
@@ -643,7 +649,7 @@ function DatabaseView({ catalog, onViewTarget }: { catalog: Catalog; onViewTarge
   return (
     <div className="view-stack">
       <section className="page-intro compact">
-        <div><p className="eyebrow">81-asset diligence set</p><h1>Specialty product database</h1><p>Find the U.S. rights holder, ownership status and publicly reported revenue for every candidate.</p><p className="fact-standard">{exactUsCount} exact U.S. disclosures · broader figures stay labeled · no estimates</p></div>
+        <div><p className="eyebrow">81-asset diligence set</p><h1>Specialty product database</h1><p>Compare rights holder, revenue, modeled U.S. team and priority geographies for every candidate.</p><p className="fact-standard">{exactUsCount} exact U.S. revenue disclosures · team estimates show source and method</p></div>
         <div className="intro-stat"><strong>{filtered.length.toLocaleString()}</strong><span>of 81 candidates</span></div>
       </section>
       <section className="target-tools database-tools">
@@ -669,6 +675,8 @@ function DatabaseView({ catalog, onViewTarget }: { catalog: Catalog; onViewTarge
           const rank = product.specialtyRank;
           const score = product.specialtyScore;
           const diligence = productDiligence(product, catalog);
+          const model = commercialModelForProduct(product);
+          const modeledTotal = model ? teamTotal(model.field) + teamTotal(model.inside) : null;
           return (
             <article className={`database-row ${rank ? "linked" : ""}`} key={product.id}>
               <div className="database-name"><div>{rank ? <b>#{rank}</b> : <b>Screened</b>}<h3>{product.brand}</h3></div><span>{product.ingredient}</span></div>
@@ -677,7 +685,7 @@ function DatabaseView({ catalog, onViewTarget }: { catalog: Catalog; onViewTarge
               <div className="database-product"><span className="row-label">Product</span><strong>{product.route} · {product.modality}</strong><small>{short(product.mechanism ?? "Not classified", 74)}</small></div>
               <div className="database-row-action">
                 {diligence && <span className={`disclosure-badge ${diligence.disclosure.toLowerCase().replaceAll(" ", "-")}`}>{diligence.disclosure}</span>}
-                <button className="strategy-link" onClick={() => setSelectedProduct(product)}><span>Review facts{rank && score ? ` · ${score} fit` : ""}</span><ArrowIcon /></button>
+                <button className="strategy-link" onClick={() => setSelectedProduct(product)}><span>Review{modeledTotal ? ` · ${modeledTotal} roles` : ""}{rank && score ? ` · ${score} fit` : ""}</span><ArrowIcon /></button>
               </div>
             </article>
           );
@@ -685,10 +693,11 @@ function DatabaseView({ catalog, onViewTarget }: { catalog: Catalog; onViewTarge
         {!filtered.length && <div className="empty-state"><h2>No matching candidates</h2><p>Broaden the filters or search.</p></div>}
       </section>
       {visible < filtered.length && <button className="button load-more" onClick={() => setVisible((count) => count + 48)}>Show 48 more</button>}
-      {selectedProduct && productDiligence(selectedProduct, catalog) && (
+      {selectedProduct && productDiligence(selectedProduct, catalog) && commercialModelForProduct(selectedProduct) && (
         <CandidateDrawer
           product={selectedProduct}
           diligence={productDiligence(selectedProduct, catalog)!}
+          model={commercialModelForProduct(selectedProduct)!}
           onClose={() => setSelectedProduct(null)}
           onViewTarget={selectedProduct.specialtyRank && selectedProduct.strategyAsset ? () => onViewTarget(selectedProduct.strategyAsset!) : undefined}
         />
@@ -887,7 +896,7 @@ function RevenueHistory({ diligence }: { diligence: AssetDiligence }) {
   );
 }
 
-function CandidateDrawer({ product, diligence, onClose, onViewTarget }: { product: Product; diligence: AssetDiligence; onClose: () => void; onViewTarget?: () => void }) {
+function CandidateDrawer({ product, diligence, model, onClose, onViewTarget }: { product: Product; diligence: AssetDiligence; model: CommercialModel; onClose: () => void; onViewTarget?: () => void }) {
   useEffect(() => {
     const close = (event: KeyboardEvent) => event.key === "Escape" && onClose();
     window.addEventListener("keydown", close);
@@ -900,7 +909,7 @@ function CandidateDrawer({ product, diligence, onClose, onViewTarget }: { produc
 
   return (
     <div className="overlay" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-      <aside className="detail-drawer candidate-drawer" role="dialog" aria-modal="true" aria-label={`${product.brand} ownership and revenue facts`}>
+      <aside className="detail-drawer candidate-drawer" role="dialog" aria-modal="true" aria-label={`${product.brand} commercial model and facts`}>
         <div className="drawer-header">
           <div><p className="eyebrow">Specialty candidate</p><h2>{product.brand}</h2><span>{product.ingredient}</span></div>
           <button className="close-button" onClick={onClose} aria-label="Close"><CloseIcon /></button>
@@ -912,8 +921,10 @@ function CandidateDrawer({ product, diligence, onClose, onViewTarget }: { produc
         <div className="drawer-body">
           <DetailRow label="Ownership"><b>{diligence.ownership}</b>{diligence.ticker ? ` · ${diligence.ticker}` : ""}<br />Parent: {diligence.parent}</DetailRow>
           <DetailRow label="Commercial status">{diligence.launch}<br />{diligence.indicationSplit}</DetailRow>
+          {model.indication && <DetailRow label="Primary market">{model.indication}</DetailRow>}
           <DetailRow label="Product"><span className="inline-chips"><b>{product.modality}</b><b>{product.route}</b><b>{product.dosageForm}</b></span><br />{product.mechanism}</DetailRow>
           <RevenueHistory diligence={diligence} />
+          <CommercialModelDetail model={model} />
         </div>
         {onViewTarget && <div className="drawer-actions"><button className="button primary" onClick={onViewTarget}>Open ranked target brief</button></div>}
       </aside>

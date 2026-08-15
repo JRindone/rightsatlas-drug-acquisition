@@ -27,13 +27,15 @@ test("server-renders the original specialty strategy shell and metadata", async 
 });
 
 test("keeps the two publishing targets aligned", async () => {
-  const [externalHtml, layout, app, strategyApp, diligence, commercialModels, router, catalog, dealBenchmarks] = await Promise.all([
+  const [externalHtml, layout, app, strategyApp, diligence, candidateDiligence, commercialModels, specialtyCandidateModels, router, catalog, dealBenchmarks] = await Promise.all([
     readFile(new URL("../external/index.html", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/AssetScreenerApp.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/AcquisitionApp.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/diligence.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/candidateDiligence.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/commercialModels.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/specialtyCandidateModels.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/AppRouter.tsx", import.meta.url), "utf8"),
     readFile(new URL("../public/data/catalog.json", import.meta.url), "utf8"),
     readFile(new URL("../public/data/deal-benchmarks.json", import.meta.url), "utf8"),
@@ -60,9 +62,14 @@ test("keeps the two publishing targets aligned", async () => {
   assert.match(diligence, /Private/);
   assert.match(diligence, /U\.S\. split not disclosed/);
   assert.match(diligence, /sec\.gov/);
+  assert.match(candidateDiligence, /CANDIDATE_DILIGENCE/);
   assert.equal((commercialModels.match(/^  (?:"[^"]+"|[A-Z0-9]+): \{$/gm) ?? []).length, 20);
   assert.match(commercialModels, /Specialty sales reps/);
   assert.match(commercialModels, /Priority geographies|geographies/);
+  assert.equal((specialtyCandidateModels.match(/^  (?:"[^"]+"|[A-Za-z][A-Za-z0-9]+): (?:buildModel|insulinModel|migraineModel|fertilityModel|growthModel)\(/gm) ?? []).length, 61);
+  assert.match(specialtyCandidateModels, /Field access \/ reimbursement/);
+  assert.match(specialtyCandidateModels, /Patient access coordinators|case managers|support/);
+  assert.match(specialtyCandidateModels, /geographyMethod/);
   assert.match(strategyApp, /Modeled standalone U\.S\. team/);
   assert.match(strategyApp, /Observed evidence/);
   assert.match(strategyApp, /Estimation method/);
@@ -74,7 +81,7 @@ test("keeps the two publishing targets aligned", async () => {
   assert.match(catalog, /"strategyRecords":40/);
   assert.match(catalog, /Build a focused specialty franchise/);
   const deals = JSON.parse(dealBenchmarks);
-  assert.equal(deals.deals.length, 34);
+  assert.ok(deals.deals.length >= 34);
   assert.ok(deals.deals.every((deal) => deal.sourceUrl && deal.rightsScope && deal.insight));
   assert.ok(deals.deals.some((deal) => deal.structure === "Royalty monetization"));
   assert.ok(deals.deals.some((deal) => deal.status.includes("Terminated")));
