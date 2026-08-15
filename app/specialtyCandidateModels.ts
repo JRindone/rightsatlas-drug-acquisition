@@ -59,7 +59,6 @@ const RARE_ENDOCRINE_GEOS = ["Boston–New York–Philadelphia", "Cleveland–Ch
 const FEDERAL_GEOS = ["Washington, DC / HHS", "BARDA and SNS depots", "CDC / Atlanta", "DoD medical commands", "Designated regional treatment centers"];
 
 const LILLY_SUPPORT = { label: "Lilly support and savings", url: "https://www.lilly.com/hcp/resources/patient-support-savings" };
-const NOVO_SUPPORT = { label: "NovoCare support", url: "https://www.novocare.com/" };
 const DIABETES_BURDEN = { label: "American Diabetes Association statistics", url: "https://diabetes.org/about-diabetes/statistics/about-diabetes" };
 
 function insulinModel(brand: string, owner: string, primaryCount: number, note: string, source = LILLY_SUPPORT): CommercialModel {
