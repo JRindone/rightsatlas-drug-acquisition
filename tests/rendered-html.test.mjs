@@ -45,7 +45,8 @@ test("keeps the two publishing targets aligned", async () => {
 
   for (const source of [externalHtml, layout]) {
     assert.match(source, /Cohaddy Bio \| Build a Specialty Team/);
-    assert.match(source, /rights holder, annual sales, call points/i);
+    assert.match(source, /635 mechanism-classified/i);
+    assert.match(source, /commercial team/i);
   }
   assert.match(app, /US specialty markets/);
   assert.match(app, /Priority keywords/);
@@ -77,6 +78,7 @@ test("keeps the two publishing targets aligned", async () => {
   assert.match(specialtyCandidateModels, /geographyMethod/);
   assert.match(universeCommercialModels, /universeCommercialModel/);
   assert.match(universeCommercialModels, /Directional/);
+  assert.match(universeCommercialModels, /No company headcount disclosure is assumed/);
   assert.match(strategyApp, /Modeled standalone U\.S\. team/);
   assert.match(strategyApp, /Observed evidence/);
   assert.match(strategyApp, /Estimation method/);
@@ -85,6 +87,7 @@ test("keeps the two publishing targets aligned", async () => {
   assert.match(strategyApp, /Candidate-company activity/);
   assert.match(strategyApp, /All product deals · every stage/);
   assert.match(strategyApp, /Mechanism-classified database/);
+  assert.match(strategyApp, /Archetype estimate/);
   assert.match(strategyApp, /Matched owner deals/);
   assert.match(strategyApp, /Export.*rows/);
   assert.match(router, /tool.*asset-screener/);

@@ -9,7 +9,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const protocol = requestHeaders.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
   const ogImage = `${protocol}://${host}/og-specialty.png`;
   const title = "Cohaddy Bio | Build a Specialty Team";
-  const description = "Evaluate 81 specialty candidates and 20 ranked U.S. commercial assets by fit, rights holder, annual sales, call points, and team model.";
+  const description = "Screen 635 mechanism-classified U.S. products by company, route, mechanism, commercial team, target geographies and researched diligence.";
   return {
     title,
     description,
