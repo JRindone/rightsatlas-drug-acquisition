@@ -27,7 +27,7 @@ test("server-renders the original specialty strategy shell and metadata", async 
 });
 
 test("keeps the two publishing targets aligned", async () => {
-  const [externalHtml, layout, app, strategyApp, diligence, candidateDiligence, universeDiligence, commercialModels, specialtyCandidateModels, universeCommercialModels, router, catalog, dealBenchmarks] = await Promise.all([
+  const [externalHtml, layout, app, strategyApp, diligence, candidateDiligence, universeDiligence, commercialModels, specialtyCandidateModels, universeCommercialModels, router, catalog, dealBenchmarks, clinicalEvidence] = await Promise.all([
     readFile(new URL("../external/index.html", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/AssetScreenerApp.tsx", import.meta.url), "utf8"),
@@ -41,6 +41,7 @@ test("keeps the two publishing targets aligned", async () => {
     readFile(new URL("../app/AppRouter.tsx", import.meta.url), "utf8"),
     readFile(new URL("../public/data/catalog.json", import.meta.url), "utf8"),
     readFile(new URL("../public/data/deal-benchmarks.json", import.meta.url), "utf8"),
+    readFile(new URL("../public/data/clinical-evidence.json", import.meta.url), "utf8"),
   ]);
 
   for (const source of [externalHtml, layout]) {
@@ -90,6 +91,9 @@ test("keeps the two publishing targets aligned", async () => {
   assert.match(strategyApp, /Archetype estimate/);
   assert.match(strategyApp, /Matched owner deals/);
   assert.match(strategyApp, /Export.*rows/);
+  assert.match(strategyApp, /Registration evidence/);
+  assert.match(strategyApp, /Current U\.S\. prescribing information/);
+  assert.match(strategyApp, /data\/clinical-evidence\.json/);
   assert.match(router, /tool.*asset-screener/);
   assert.match(router, /PreviousVersion/);
   assert.match(router, /Open US Specialty Asset Screener/);
@@ -97,6 +101,7 @@ test("keeps the two publishing targets aligned", async () => {
   assert.match(catalog, /Build a focused specialty franchise/);
   const deals = JSON.parse(dealBenchmarks);
   const productCatalog = JSON.parse(catalog);
+  const evidence = JSON.parse(clinicalEvidence);
   assert.equal(productCatalog.universe.filter((product) => product.mechanism).length, 635);
   assert.equal(deals.deals.length, 77);
   assert.equal(deals.meta.candidateCompanies.length, 17);
@@ -108,4 +113,11 @@ test("keeps the two publishing targets aligned", async () => {
   assert.ok(deals.deals.filter((deal) => deal.candidateCompanies.length).length >= 40);
   assert.ok(deals.deals.some((deal) => deal.structure === "Royalty monetization"));
   assert.ok(deals.deals.some((deal) => deal.status.includes("Terminated")));
+  assert.equal(evidence.records.length, 81);
+  assert.equal(new Set(evidence.records.map((record) => record.brand.toLowerCase())).size, 81);
+  assert.ok(evidence.records.every((record) => record.label?.url && record.label?.pdfUrl));
+  assert.ok(evidence.records.every((record) => record.approvedIndications?.length));
+  assert.ok(evidence.records.reduce((sum, record) => sum + (record.studies?.length ?? 0), 0) >= 190);
+  assert.ok(evidence.records.flatMap((record) => record.studies ?? []).flatMap((study) => study.publications).every((publication) => /^https:\/\/pubmed\.ncbi\.nlm\.nih\.gov\//.test(publication.url)));
+  assert.ok(evidence.records.flatMap((record) => record.studies ?? []).flatMap((study) => study.trialRegistryUrls).every((url) => /^https:\/\/clinicaltrials\.gov\/study\//.test(url)));
 });

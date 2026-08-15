@@ -1476,6 +1476,18 @@ button.funnel-node {
   color: var(--teal);
 }
 
+.clinical-evidence-badge {
+  align-self: flex-start;
+  border: 1px solid rgba(246, 187, 70, 0.36);
+  color: var(--accent);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1.35;
+  padding: 5px 7px;
+  text-transform: uppercase;
+}
+
 .database-row-action .strategy-link {
   width: 100%;
 }
@@ -2189,6 +2201,271 @@ button.funnel-node {
 .revenue-diligence {
   border-bottom: 1px solid var(--line);
   padding: 22px 0;
+}
+
+.clinical-evidence-panel {
+  border-bottom: 1px solid var(--line);
+  padding: 22px 0;
+}
+
+.clinical-evidence-heading {
+  align-items: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.clinical-evidence-heading > div:first-child > span,
+.safety-evidence article > span,
+.clinical-study-body article > span {
+  color: var(--teal);
+  display: block;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  margin-bottom: 5px;
+  text-transform: uppercase;
+}
+
+.clinical-evidence-heading h3 {
+  font-size: 22px;
+  line-height: 1.2;
+  margin: 3px 0 0;
+}
+
+.clinical-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.clinical-counts b {
+  border: 1px solid var(--line-strong);
+  color: var(--muted);
+  font-size: 8px;
+  letter-spacing: 0.05em;
+  padding: 5px 7px;
+  text-transform: uppercase;
+}
+
+.clinical-scope {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.55;
+  margin: 10px 0;
+}
+
+.clinical-source-actions,
+.trial-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.clinical-source-actions {
+  margin-bottom: 16px;
+}
+
+.clinical-source-actions a,
+.trial-links a {
+  border: 1px solid var(--line-strong);
+  color: var(--accent);
+  font-size: 9px;
+  font-weight: 800;
+  padding: 7px 9px;
+  text-decoration: none;
+}
+
+.indication-evidence-list,
+.clinical-study-list {
+  display: grid;
+  gap: 8px;
+}
+
+.indication-evidence-list {
+  margin-bottom: 12px;
+}
+
+.indication-evidence-list details,
+.safety-evidence,
+.clinical-study,
+.publication-list {
+  background: var(--panel-soft);
+  border: 1px solid var(--line);
+}
+
+.indication-evidence-list summary,
+.safety-evidence > summary,
+.clinical-study > summary,
+.publication-list > summary {
+  align-items: center;
+  cursor: pointer;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  list-style: none;
+  padding: 12px;
+}
+
+.indication-evidence-list summary::-webkit-details-marker,
+.safety-evidence > summary::-webkit-details-marker,
+.clinical-study > summary::-webkit-details-marker,
+.publication-list > summary::-webkit-details-marker {
+  display: none;
+}
+
+.indication-evidence-list summary::after,
+.safety-evidence > summary::after,
+.clinical-study > summary::after,
+.publication-list > summary::after {
+  color: var(--accent);
+  content: "+";
+  flex: 0 0 auto;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.indication-evidence-list details[open] > summary::after,
+.safety-evidence[open] > summary::after,
+.clinical-study[open] > summary::after,
+.publication-list[open] > summary::after {
+  content: "−";
+}
+
+.indication-evidence-list summary strong,
+.safety-evidence > summary strong,
+.clinical-study > summary strong,
+.publication-list > summary strong {
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.indication-evidence-list summary span,
+.safety-evidence > summary span,
+.clinical-study > summary span,
+.publication-list > summary span,
+.clinical-study > summary > b {
+  color: var(--faint);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.indication-evidence-list details > p,
+.publication-list > p,
+.publication-list > small {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.55;
+  margin: 0;
+  padding: 0 12px 12px;
+}
+
+.safety-evidence {
+  margin-bottom: 12px;
+}
+
+.safety-evidence > div,
+.clinical-study-body {
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+}
+
+.safety-evidence article,
+.clinical-study-body article {
+  min-width: 0;
+}
+
+.safety-evidence article p,
+.safety-evidence article ul,
+.clinical-study-body article ul {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.55;
+  margin: 0;
+}
+
+.safety-evidence article ul,
+.clinical-study-body article ul {
+  padding-left: 17px;
+}
+
+.safety-evidence article li + li,
+.clinical-study-body article li + li {
+  margin-top: 5px;
+}
+
+.boxed-warning {
+  border-left: 3px solid var(--accent);
+  padding-left: 10px;
+}
+
+.boxed-warning > span {
+  color: var(--accent) !important;
+}
+
+.clinical-study > summary > div {
+  display: grid;
+  gap: 3px;
+}
+
+.metric-lines {
+  font-variant-numeric: tabular-nums;
+}
+
+.publication-list {
+  grid-column: 1 / -1;
+}
+
+.publication-list ol {
+  display: grid;
+  gap: 7px;
+  list-style-position: inside;
+  margin: 0;
+  padding: 0 12px 12px;
+}
+
+.publication-list li {
+  color: var(--faint);
+  font-size: 8px;
+}
+
+.publication-list li a {
+  color: var(--text);
+  display: inline;
+  text-decoration: none;
+}
+
+.publication-list li a strong,
+.publication-list li a span {
+  display: block;
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.publication-list li a span {
+  color: var(--muted);
+  font-weight: 400;
+  margin-top: 2px;
+  text-transform: none;
+}
+
+.publication-list > small {
+  display: block;
+  font-size: 8px;
+}
+
+.no-clinical-studies {
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.5;
+  margin: 0;
+  padding: 12px;
 }
 
 .commercial-model-detail {
@@ -3071,11 +3348,16 @@ button.funnel-node {
   }
 
   .database-tools {
-    grid-template-columns: minmax(260px, 1fr) repeat(5, minmax(118px, 0.26fr));
+    grid-template-columns: minmax(240px, 1fr) repeat(6, minmax(105px, 0.24fr));
   }
 
   .database-tools .search-field {
     grid-column: auto;
+  }
+
+  .clinical-evidence-heading {
+    align-items: center;
+    flex-direction: row;
   }
 
   .compare-tray {

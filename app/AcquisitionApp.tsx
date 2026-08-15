@@ -146,6 +146,64 @@ type DealBenchmarkCatalog = {
   deals: DealBenchmark[];
 };
 
+type ClinicalPublication = {
+  pmid: string;
+  title: string;
+  journal: string;
+  year: string | null;
+  doi: string | null;
+  url: string;
+  trialIds: string[];
+};
+
+type ClinicalStudyEvidence = {
+  indicationGroup: string;
+  phases: string[];
+  trialIds: string[];
+  trialRegistryUrls: string[];
+  population: string[];
+  design: string[];
+  efficacy: string[];
+  keyMetrics: string[];
+  publicationMatch: string;
+  publications: ClinicalPublication[];
+};
+
+type ClinicalEvidenceRecord = {
+  brand: string;
+  ingredient: string;
+  specialtyRank: number | null;
+  status: string;
+  label?: {
+    setid: string;
+    title: string;
+    publishedDate: string | null;
+    url: string;
+    pdfUrl: string;
+  };
+  approvedIndications?: { title: string; definition: string }[];
+  safety?: {
+    boxedWarning: string;
+    contraindications: string;
+    keyWarnings: { title: string; summary: string }[];
+    commonAdverseReactions: string[];
+    studyPopulation: string[];
+  };
+  studies?: ClinicalStudyEvidence[];
+  noClinicalStudiesStatement?: string | null;
+};
+
+type ClinicalEvidenceCatalog = {
+  meta: {
+    title: string;
+    generatedAt: string;
+    products: number;
+    scope: string;
+    publicationMethod: string;
+  };
+  records: ClinicalEvidenceRecord[];
+};
+
 const VIEW_LABELS: Record<View, string> = {
   situation: "Current situation",
   targets: "Targets",
@@ -209,6 +267,10 @@ function diligenceFor(target: Target) {
 function productDiligence(product: Product, catalog: Catalog) {
   const rankedTarget = catalog.targets.specialty.find((target) => target.asset === product.strategyAsset || target.asset === product.brand);
   return rankedTarget ? diligenceFor(rankedTarget) : CANDIDATE_DILIGENCE[product.brand] ?? universeDiligence(product);
+}
+
+function clinicalEvidenceFor(catalog: ClinicalEvidenceCatalog | null, brand: string) {
+  return catalog?.records.find((record) => record.brand.toLowerCase() === brand.toLowerCase()) ?? null;
 }
 
 function reportedRevenue(target: Target) {
@@ -658,13 +720,14 @@ function TargetsView({
   );
 }
 
-function DatabaseView({ catalog, dealCatalog, onViewTarget }: { catalog: Catalog; dealCatalog: DealBenchmarkCatalog; onViewTarget: (asset: string) => void }) {
+function DatabaseView({ catalog, dealCatalog, clinicalCatalog, onViewTarget }: { catalog: Catalog; dealCatalog: DealBenchmarkCatalog; clinicalCatalog: ClinicalEvidenceCatalog | null; onViewTarget: (asset: string) => void }) {
   const [scope, setScope] = useState<"mechanism" | "specialty">("mechanism");
   const [query, setQuery] = useState("");
   const [route, setRoute] = useState("All routes");
   const [modelScope, setModelScope] = useState("All team models");
   const [ownership, setOwnership] = useState("All ownership");
   const [disclosure, setDisclosure] = useState("All revenue facts");
+  const [evidenceScope, setEvidenceScope] = useState("All label evidence");
   const [dealActivity, setDealActivity] = useState("All deal activity");
   const [visible, setVisible] = useState(48);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -672,29 +735,38 @@ function DatabaseView({ catalog, dealCatalog, onViewTarget }: { catalog: Catalog
   const mechanismProducts = useMemo(() => mechanismDatabase(catalog), [catalog]);
   const products = scope === "mechanism" ? mechanismProducts : specialtyProducts;
   const ownerDeals = useMemo(() => dealHistoryByCompany(dealCatalog), [dealCatalog]);
+  const evidenceFor = useCallback((product: Product) => clinicalEvidenceFor(clinicalCatalog, product.brand), [clinicalCatalog]);
   const dealsFor = useCallback((product: Product) => {
     const diligence = productDiligence(product, catalog);
     return ownerDeals.get(companyKey(diligence.parent) ?? companyKey(product.company) ?? "") ?? [];
   }, [catalog, ownerDeals]);
   const routes = useMemo(() => ["All routes", ...Array.from(new Set(products.map((product) => product.route).filter(Boolean))).sort()], [products]);
-  const exactUsCount = useMemo(() => specialtyProducts.filter((product) => productDiligence(product, catalog)?.disclosure === "Exact U.S.").length, [specialtyProducts, catalog]);
   const mappedOwnershipCount = useMemo(() => mechanismProducts.filter((product) => productDiligence(product, catalog).ownership !== "Not verified").length, [mechanismProducts, catalog]);
   const researchedModelCount = useMemo(() => mechanismProducts.filter((product) => explicitCommercialModel(product)).length, [mechanismProducts]);
   const linkedOwners = useMemo(() => new Set(mechanismProducts.map((product) => companyKey(product.company)).filter((key) => key && ownerDeals.has(key))).size, [mechanismProducts, ownerDeals]);
+  const clinicalStudyCount = useMemo(() => clinicalCatalog?.records.reduce((sum, record) => sum + (record.studies?.length ?? 0), 0) ?? 0, [clinicalCatalog]);
+  const clinicalPublicationCount = useMemo(() => new Set(clinicalCatalog?.records.flatMap((record) => record.studies?.flatMap((study) => study.publications.map((publication) => publication.pmid)) ?? []) ?? []).size, [clinicalCatalog]);
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return products.filter((product) => {
       const diligence = productDiligence(product, catalog);
       const model = commercialModelForProduct(product);
+      const clinical = evidenceFor(product);
       const history = ownerDeals.get(companyKey(diligence.parent) ?? companyKey(product.company) ?? "") ?? [];
       const matchesRoute = route === "All routes" || product.route === route;
       const researchedModel = Boolean(explicitCommercialModel(product));
       const matchesModelScope = modelScope === "All team models" || (modelScope === "Product-specific research" ? researchedModel : !researchedModel);
       const matchesOwnership = ownership === "All ownership" || diligence.ownership === ownership;
       const matchesDisclosure = disclosure === "All revenue facts" || diligence.disclosure === disclosure;
+      const hasPublications = Boolean(clinical?.studies?.some((study) => study.publications.length));
+      const matchesEvidence = evidenceScope === "All label evidence"
+        || (evidenceScope === "Multiple indications" && (clinical?.approvedIndications?.length ?? 0) > 1)
+        || (evidenceScope === "Boxed warning" && Boolean(clinical?.safety?.boxedWarning))
+        || (evidenceScope === "Published studies" && hasPublications)
+        || (evidenceScope === "No PI clinical-studies section" && Boolean(clinical?.noClinicalStudiesStatement));
       const matchesDeals = dealActivity === "All deal activity" || (dealActivity === "Matched owner deals" ? history.length > 0 : history.length === 0);
-      const haystack = [product.brand, product.ingredient, product.company, product.mechanism, product.modality, diligence.parent, diligence.rightsHolder, diligence.ticker, diligence.latestDisplay, model.indication, model.archetype, model.confidence, ...history.flatMap((deal) => [deal.asset, deal.buyer, deal.seller, deal.structure]), ...model.geographies, ...model.field.map((role) => role.role), ...model.inside.map((role) => role.role)].join(" ").toLowerCase();
-      return matchesRoute && matchesModelScope && matchesOwnership && matchesDisclosure && matchesDeals && (!needle || haystack.includes(needle));
+      const haystack = [product.brand, product.ingredient, product.company, product.mechanism, product.modality, diligence.parent, diligence.rightsHolder, diligence.ticker, diligence.latestDisplay, model.indication, model.archetype, model.confidence, ...(clinical?.approvedIndications?.flatMap((indication) => [indication.title, indication.definition]) ?? []), ...(clinical?.studies?.flatMap((study) => [study.indicationGroup, ...study.phases, ...study.trialIds]) ?? []), ...history.flatMap((deal) => [deal.asset, deal.buyer, deal.seller, deal.structure]), ...model.geographies, ...model.field.map((role) => role.role), ...model.inside.map((role) => role.role)].join(" ").toLowerCase();
+      return matchesRoute && matchesModelScope && matchesOwnership && matchesDisclosure && matchesEvidence && matchesDeals && (!needle || haystack.includes(needle));
     }).sort((a, b) => {
       if (scope === "mechanism") {
         const dealDelta = dealsFor(b).length - dealsFor(a).length;
@@ -706,7 +778,7 @@ function DatabaseView({ catalog, dealCatalog, onViewTarget }: { catalog: Catalog
       if (rankA !== null || rankB !== null) return (rankA ?? 999) - (rankB ?? 999);
       return specialtySignalScore(b) - specialtySignalScore(a) || a.brand.localeCompare(b.brand);
     });
-  }, [products, catalog, scope, query, route, modelScope, ownership, disclosure, dealActivity, ownerDeals, dealsFor]);
+  }, [products, catalog, scope, query, route, modelScope, ownership, disclosure, evidenceScope, dealActivity, ownerDeals, dealsFor, evidenceFor]);
 
   function resetResults() {
     setVisible(48);
@@ -716,6 +788,7 @@ function DatabaseView({ catalog, dealCatalog, onViewTarget }: { catalog: Catalog
     setScope(nextScope);
     setOwnership("All ownership");
     setDisclosure("All revenue facts");
+    setEvidenceScope("All label evidence");
     setDealActivity("All deal activity");
     setModelScope("All team models");
     setSelectedProduct(null);
@@ -732,7 +805,7 @@ function DatabaseView({ catalog, dealCatalog, onViewTarget }: { catalog: Catalog
         {scope === "mechanism" ? (
           <div><p className="eyebrow">635 mechanism-classified products</p><h1>Mechanism-classified database</h1><p>Search product, holder, mechanism, modeled team and target geographies.</p><p className="fact-standard">{researchedModelCount} product-specific models · {(mechanismProducts.length - researchedModelCount).toLocaleString()} archetype estimates · {mappedOwnershipCount} ownership mappings · {linkedOwners} owners with matched deals</p></div>
         ) : (
-          <div><p className="eyebrow">81-asset diligence set</p><h1>Specialty product database</h1><p>Compare rights holder, revenue, modeled U.S. team and priority geographies.</p><p className="fact-standard">{exactUsCount} exact U.S. revenue disclosures · team estimates show source and method</p></div>
+          <div><p className="eyebrow">81-asset diligence set</p><h1>Specialty product database</h1><p>Compare rights, revenue, commercial model and registration evidence.</p><p className="fact-standard">81 current U.S. labels · {clinicalStudyCount} indication study groups · {clinicalPublicationCount} linked journal publications</p></div>
         )}
         <div className="intro-stat"><strong>{filtered.length.toLocaleString()}</strong><span>of {products.length} products</span></div>
       </section>
@@ -759,6 +832,7 @@ function DatabaseView({ catalog, dealCatalog, onViewTarget }: { catalog: Catalog
         </select>
         <select value={ownership} onChange={(event) => { setOwnership(event.target.value); resetResults(); }} aria-label="Ownership filter"><option>All ownership</option><option>Public parent</option><option>Private</option><option>Not verified</option></select>
         <select value={disclosure} onChange={(event) => { setDisclosure(event.target.value); resetResults(); }} aria-label="Revenue disclosure filter"><option>All revenue facts</option><option>Exact U.S.</option><option>Broader disclosure</option><option>Not disclosed</option><option>Pre-revenue</option></select>
+        {scope === "specialty" && <select value={evidenceScope} onChange={(event) => { setEvidenceScope(event.target.value); resetResults(); }} aria-label="Clinical evidence filter"><option>All label evidence</option><option>Multiple indications</option><option>Boxed warning</option><option>Published studies</option><option>No PI clinical-studies section</option></select>}
       </section>
       <section className="database-list">
         {filtered.slice(0, visible).map((product) => {
@@ -766,6 +840,7 @@ function DatabaseView({ catalog, dealCatalog, onViewTarget }: { catalog: Catalog
           const score = product.specialtyScore;
           const diligence = productDiligence(product, catalog);
           const model = commercialModelForProduct(product);
+          const clinical = evidenceFor(product);
           const modeledTotal = model ? teamTotal(model.field) + teamTotal(model.inside) : null;
           const history = dealsFor(product);
           return (
@@ -773,8 +848,9 @@ function DatabaseView({ catalog, dealCatalog, onViewTarget }: { catalog: Catalog
               <div className="database-name"><div>{rank ? <b>#{rank}</b> : <b>{scope === "mechanism" ? "Mechanism" : "Screened"}</b>}<h3>{product.brand}</h3></div><span>{product.ingredient}</span></div>
               <div className="database-owner"><span className="row-label">{diligence.holderBasis === "FDA application holder" ? "FDA application holder" : "U.S. rights holder"}</span><strong>{diligence.rightsHolder}</strong><small>{diligence.ownership}{diligence.ticker ? ` · ${diligence.ticker}` : ""}</small></div>
               <div className="database-revenue"><span className="row-label">Latest reported revenue</span><strong>{diligence.latestDisplay}</strong><small>{diligence.latestPeriod}{history.length ? ` · ${history.length} owner deal${history.length === 1 ? "" : "s"}` : ""}</small></div>
-              <div className="database-product"><span className="row-label">Product</span><strong>{product.route} · {product.modality}</strong><small>{short(product.mechanism ?? "Not classified", 74)}</small></div>
+              <div className="database-product"><span className="row-label">{clinical ? "Approved indication" : "Product"}</span><strong>{clinical?.approvedIndications?.[0]?.title ?? `${product.route} · ${product.modality}`}</strong><small>{short(clinical?.approvedIndications?.[0]?.definition ?? product.mechanism ?? "Not classified", 92)}</small></div>
               <div className="database-row-action">
+                {clinical && <span className="clinical-evidence-badge">{clinical.approvedIndications?.length ?? 0} indication{clinical.approvedIndications?.length === 1 ? "" : "s"} · {clinical.studies?.length ?? 0} study groups</span>}
                 <span className={`model-depth-badge ${explicitCommercialModel(product) ? "researched" : "archetype"}`}>{explicitCommercialModel(product) ? "Researched" : "Archetype"}</span>
                 <button className="strategy-link" onClick={() => setSelectedProduct(product)}><span>Review{modeledTotal ? ` · ${modeledTotal} roles` : history.length ? ` · ${history.length} deals` : ""}{rank && score ? ` · ${score} fit` : ""}</span><ArrowIcon /></button>
               </div>
@@ -790,10 +866,11 @@ function DatabaseView({ catalog, dealCatalog, onViewTarget }: { catalog: Catalog
           diligence={selectedDiligence}
           model={selectedModel}
           deals={selectedDeals}
+          clinicalEvidence={evidenceFor(selectedProduct)}
           onClose={() => setSelectedProduct(null)}
           onViewTarget={selectedProduct.specialtyRank && selectedProduct.strategyAsset ? () => onViewTarget(selectedProduct.strategyAsset!) : undefined}
         />
-      ) : selectedProduct && selectedDiligence ? <ProductDrawer product={selectedProduct} diligence={selectedDiligence} deals={selectedDeals} onClose={() => setSelectedProduct(null)} /> : null}
+      ) : selectedProduct && selectedDiligence ? <ProductDrawer product={selectedProduct} diligence={selectedDiligence} deals={selectedDeals} clinicalEvidence={evidenceFor(selectedProduct)} onClose={() => setSelectedProduct(null)} /> : null}
     </div>
   );
 }
@@ -1077,7 +1154,71 @@ function DealHistoryPanel({ deals }: { deals: DealBenchmark[] }) {
   );
 }
 
-function ProductDrawer({ product, diligence, deals, onClose }: { product: Product; diligence: AssetDiligence; deals: DealBenchmark[]; onClose: () => void }) {
+function ClinicalEvidencePanel({ evidence }: { evidence: ClinicalEvidenceRecord }) {
+  const indications = evidence.approvedIndications ?? [];
+  const studies = evidence.studies ?? [];
+  const publications = new Set(studies.flatMap((study) => study.publications.map((publication) => publication.pmid))).size;
+  const safety = evidence.safety;
+
+  return (
+    <section className="clinical-evidence-panel">
+      <div className="clinical-evidence-heading">
+        <div><span>Registration evidence</span><h3>Approved uses and clinical studies</h3></div>
+        <div className="clinical-counts"><b>{indications.length} indications</b><b>{studies.length} study groups</b><b>{publications} publications</b></div>
+      </div>
+      <p className="clinical-scope">Current U.S. PI efficacy studies and integrated safety population. Earlier phases appear only when described in the label.</p>
+      {evidence.label && <div className="clinical-source-actions"><a href={evidence.label.url} target="_blank" rel="noreferrer">Current U.S. prescribing information ↗</a><a href={evidence.label.pdfUrl} target="_blank" rel="noreferrer">PI PDF ↗</a></div>}
+
+      <div className="indication-evidence-list">
+        {indications.map((indication) => (
+          <details key={indication.title} open={indications.length === 1}>
+            <summary><strong>{indication.title}</strong><span>Approved indication</span></summary>
+            <p>{indication.definition}</p>
+          </details>
+        ))}
+      </div>
+
+      {safety && (
+        <details className="safety-evidence">
+          <summary><strong>Safety and label population</strong><span>{safety.boxedWarning ? "Boxed warning" : `${safety.keyWarnings.length} key warnings`}</span></summary>
+          <div>
+            {safety.boxedWarning && <article className="boxed-warning"><span>Boxed warning</span><p>{short(safety.boxedWarning, 900)}</p></article>}
+            {safety.contraindications && <article><span>Contraindications</span><p>{short(safety.contraindications, 750)}</p></article>}
+            {safety.keyWarnings.length > 0 && <article><span>Key warnings</span><ul>{safety.keyWarnings.map((warning) => <li key={warning.title}><b>{warning.title}:</b> {warning.summary}</li>)}</ul></article>}
+            {safety.commonAdverseReactions.length > 0 && <article><span>Common adverse reactions</span><ul>{safety.commonAdverseReactions.map((reaction) => <li key={reaction}>{short(reaction, 700)}</li>)}</ul></article>}
+            {safety.studyPopulation.length > 0 && <article><span>Integrated safety population</span><ul>{safety.studyPopulation.map((population) => <li key={population}>{short(population, 650)}</li>)}</ul></article>}
+          </div>
+        </details>
+      )}
+
+      <div className="clinical-study-list">
+        {studies.map((study, index) => {
+          const studyPublications = [...new Map(study.publications.map((publication) => [publication.pmid, publication])).values()];
+          return (
+            <details className="clinical-study" key={`${study.indicationGroup}-${index}`}>
+              <summary><div><strong>{study.indicationGroup}</strong><span>{study.phases.length ? study.phases.join(" · ") : "Phase not stated in PI"}</span></div><b>{study.trialIds.length || 1} trial{study.trialIds.length === 1 ? "" : "s"}</b></summary>
+              <div className="clinical-study-body">
+                {study.population.length > 0 && <article><span>Population</span><ul>{study.population.map((item) => <li key={item}>{item}</li>)}</ul></article>}
+                {study.design.length > 0 && <article><span>Design</span><ul>{study.design.map((item) => <li key={item}>{item}</li>)}</ul></article>}
+                {study.efficacy.length > 0 && <article><span>Key efficacy</span><ul>{study.efficacy.map((item) => <li key={item}>{item}</li>)}</ul></article>}
+                {study.keyMetrics.length > 0 && <article><span>Reported metrics</span><ul className="metric-lines">{study.keyMetrics.map((item) => <li key={item}>{item}</li>)}</ul></article>}
+                {study.trialIds.length > 0 && <article><span>Trial registry</span><div className="trial-links">{study.trialIds.map((id, trialIndex) => <a href={study.trialRegistryUrls[trialIndex]} target="_blank" rel="noreferrer" key={id}>{id} ↗</a>)}</div></article>}
+                <details className="publication-list">
+                  <summary><strong>Journal publications</strong><span>{studyPublications.length ? `${studyPublications.length} linked` : "None located"}</span></summary>
+                  {studyPublications.length ? <ol>{studyPublications.map((publication) => <li key={publication.pmid}><a href={publication.url} target="_blank" rel="noreferrer"><strong>{publication.title}</strong><span>{publication.journal}{publication.year ? ` · ${publication.year}` : ""}{publication.doi ? ` · DOI ${publication.doi}` : ""}</span></a></li>)}</ol> : <p>No journal publication was located through the label-listed trial identifier or legacy ingredient/indication search.</p>}
+                  <small>{study.publicationMatch === "Trial-registry identifier match" ? "Linked by NCT identifier in PubMed." : "Matched by ingredient and indication; confirm registration linkage in the FDA review package."}</small>
+                </details>
+              </div>
+            </details>
+          );
+        })}
+        {!studies.length && <p className="no-clinical-studies">{evidence.noClinicalStudiesStatement}</p>}
+      </div>
+    </section>
+  );
+}
+
+function ProductDrawer({ product, diligence, deals, clinicalEvidence, onClose }: { product: Product; diligence: AssetDiligence; deals: DealBenchmark[]; clinicalEvidence: ClinicalEvidenceRecord | null; onClose: () => void }) {
   useEffect(() => {
     const close = (event: KeyboardEvent) => event.key === "Escape" && onClose();
     window.addEventListener("keydown", close);
@@ -1104,6 +1245,7 @@ function ProductDrawer({ product, diligence, deals, onClose }: { product: Produc
           <DetailRow label="Product"><span className="inline-chips"><b>{product.modality}</b><b>{product.route}</b><b>{product.dosageForm}</b></span></DetailRow>
           <DetailRow label="Mechanism">{product.mechanism}</DetailRow>
           <DetailRow label="Market status">{product.marketStatus}</DetailRow>
+          {clinicalEvidence && <ClinicalEvidencePanel evidence={clinicalEvidence} />}
           <RevenueHistory diligence={diligence} />
           <DealHistoryPanel deals={deals} />
         </div>
@@ -1112,7 +1254,7 @@ function ProductDrawer({ product, diligence, deals, onClose }: { product: Produc
   );
 }
 
-function CandidateDrawer({ product, diligence, model, deals, onClose, onViewTarget }: { product: Product; diligence: AssetDiligence; model: CommercialModel; deals: DealBenchmark[]; onClose: () => void; onViewTarget?: () => void }) {
+function CandidateDrawer({ product, diligence, model, deals, clinicalEvidence, onClose, onViewTarget }: { product: Product; diligence: AssetDiligence; model: CommercialModel; deals: DealBenchmark[]; clinicalEvidence: ClinicalEvidenceRecord | null; onClose: () => void; onViewTarget?: () => void }) {
   useEffect(() => {
     const close = (event: KeyboardEvent) => event.key === "Escape" && onClose();
     window.addEventListener("keydown", close);
@@ -1139,6 +1281,7 @@ function CandidateDrawer({ product, diligence, model, deals, onClose, onViewTarg
           <DetailRow label="Commercial status">{diligence.launch}<br />{diligence.indicationSplit}</DetailRow>
           {model.indication && <DetailRow label="Primary market">{model.indication}</DetailRow>}
           <DetailRow label="Product"><span className="inline-chips"><b>{product.modality}</b><b>{product.route}</b><b>{product.dosageForm}</b></span><br />{product.mechanism}</DetailRow>
+          {clinicalEvidence && <ClinicalEvidencePanel evidence={clinicalEvidence} />}
           <RevenueHistory diligence={diligence} />
           <CommercialModelDetail model={model} />
           <DealHistoryPanel deals={deals} />
@@ -1184,7 +1327,7 @@ function CommercialModelDetail({ model }: { model: CommercialModel }) {
   );
 }
 
-function TargetDrawer({ target, onClose, saved, onSave }: { target: Target; onClose: () => void; saved: boolean; onSave: () => void }) {
+function TargetDrawer({ target, clinicalEvidence, onClose, saved, onSave }: { target: Target; clinicalEvidence: ClinicalEvidenceRecord | null; onClose: () => void; saved: boolean; onSave: () => void }) {
   const diligence = diligenceFor(target);
   const commercialModel = COMMERCIAL_MODELS[target.asset];
   useEffect(() => {
@@ -1212,6 +1355,7 @@ function TargetDrawer({ target, onClose, saved, onSave }: { target: Target; onCl
           {diligence && <>
             <DetailRow label="Ownership"><b>{diligence.ownership}</b>{diligence.ticker ? ` · ${diligence.ticker}` : ""}<br />Parent: {diligence.parent}</DetailRow>
             <DetailRow label="Commercial status">{diligence.launch}<br />{diligence.indicationSplit}</DetailRow>
+            {clinicalEvidence && <ClinicalEvidencePanel evidence={clinicalEvidence} />}
             <RevenueHistory diligence={diligence} />
           </>}
           <DetailRow label="Why it fits">{target.rationale}</DetailRow>
@@ -1273,6 +1417,7 @@ function ComparePanel({ targets, onClose, onRemove }: { targets: Target[]; onClo
 export function AcquisitionApp() {
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [dealCatalog, setDealCatalog] = useState<DealBenchmarkCatalog | null>(null);
+  const [clinicalCatalog, setClinicalCatalog] = useState<ClinicalEvidenceCatalog | null>(null);
   const [loadError, setLoadError] = useState(false);
   const strategyKey: StrategyKey = "specialty";
   const [view, setView] = useState<View>("situation");
@@ -1297,6 +1442,14 @@ export function AcquisitionApp() {
         setDealCatalog(dealData);
       })
       .catch(() => setLoadError(true));
+
+    fetch(new URL("data/clinical-evidence.json", window.location.href).toString())
+      .then((response) => {
+        if (!response.ok) throw new Error("Clinical evidence unavailable");
+        return response.json() as Promise<ClinicalEvidenceCatalog>;
+      })
+      .then(setClinicalCatalog)
+      .catch(() => setClinicalCatalog(null));
   }, []);
 
   useEffect(() => {
@@ -1403,7 +1556,7 @@ export function AcquisitionApp() {
       <main className="page-shell">
         {view === "situation" && <SituationView catalog={catalog} onOpenTargets={() => changeView("targets")} onOpenDatabase={() => changeView("database")} />}
         {view === "targets" && <TargetsView catalog={catalog} targets={targets} strategy={strategy} savedIds={savedIds} compareIds={activeCompareIds} onOpen={setSelectedTargetId} onSave={toggleSaved} onCompare={toggleCompare} />}
-        {view === "database" && <DatabaseView catalog={catalog} dealCatalog={dealCatalog} onViewTarget={viewTarget} />}
+        {view === "database" && <DatabaseView catalog={catalog} dealCatalog={dealCatalog} clinicalCatalog={clinicalCatalog} onViewTarget={viewTarget} />}
         {view === "deals" && <DealBenchmarksView catalog={dealCatalog} />}
         {view === "saved" && <SavedView catalog={catalog} targets={targets} savedIds={savedIds} compareIds={activeCompareIds} onOpen={setSelectedTargetId} onSave={toggleSaved} onCompare={toggleCompare} onBrowse={() => changeView("targets")} />}
       </main>
@@ -1415,7 +1568,7 @@ export function AcquisitionApp() {
         </div>
       )}
       <MobileNav view={view} onChange={changeView} savedCount={targets.filter((target) => savedIds.includes(target.id)).length} />
-      {selectedTarget && <TargetDrawer target={selectedTarget} onClose={() => setSelectedTargetId(null)} saved={savedIds.includes(selectedTarget.id)} onSave={() => toggleSaved(selectedTarget.id)} />}
+      {selectedTarget && <TargetDrawer target={selectedTarget} clinicalEvidence={clinicalEvidenceFor(clinicalCatalog, selectedTarget.asset)} onClose={() => setSelectedTargetId(null)} saved={savedIds.includes(selectedTarget.id)} onSave={() => toggleSaved(selectedTarget.id)} />}
       {compareOpen && <ComparePanel targets={comparedTargets} onClose={() => setCompareOpen(false)} onRemove={toggleCompare} />}
       {toast && <div className="toast" role="status">{toast}</div>}
     </div>
