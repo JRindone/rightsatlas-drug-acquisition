@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { CANDIDATE_DILIGENCE } from "./candidateDiligence";
 import { COMMERCIAL_MODELS, teamTotal, type CommercialModel } from "./commercialModels";
 import { TOP20_DILIGENCE, type AssetDiligence } from "./diligence";
 
@@ -197,6 +198,11 @@ function diligenceFor(target: Target) {
   return TOP20_DILIGENCE[target.id];
 }
 
+function productDiligence(product: Product, catalog: Catalog) {
+  const rankedTarget = catalog.targets.specialty.find((target) => target.asset === product.strategyAsset || target.asset === product.brand);
+  return rankedTarget ? diligenceFor(rankedTarget) : CANDIDATE_DILIGENCE[product.brand];
+}
+
 function reportedRevenue(target: Target) {
   return diligenceFor(target)?.latestDisplay ?? "Not disclosed";
 }
@@ -296,7 +302,7 @@ function specialtyDatabase(catalog: Catalog) {
 
   const rankedAssets = new Set(ranked.map((product) => product.strategyAsset));
   const broader = catalog.universe
-    .filter((product) => product.mechanism && !rankedAssets.has(product.strategyAsset))
+    .filter((product) => product.mechanism && (!product.strategyAsset || !rankedAssets.has(product.strategyAsset)))
     .sort((a, b) => specialtySignalScore(b) - specialtySignalScore(a) || a.brand.localeCompare(b.brand))
     .slice(0, 61)
     .map((product) => ({ ...product, coreRank: null, coreScore: null, specialtyRank: null, specialtyScore: null }));
@@ -606,53 +612,87 @@ function TargetsView({
 function DatabaseView({ catalog, onViewTarget }: { catalog: Catalog; onViewTarget: (asset: string) => void }) {
   const [query, setQuery] = useState("");
   const [route, setRoute] = useState("All routes");
+  const [ownership, setOwnership] = useState("All ownership");
+  const [disclosure, setDisclosure] = useState("All revenue facts");
   const [visible, setVisible] = useState(48);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const specialtyProducts = useMemo(() => specialtyDatabase(catalog), [catalog]);
   const routes = useMemo(() => ["All routes", ...Array.from(new Set(specialtyProducts.map((product) => product.route).filter(Boolean))).sort()], [specialtyProducts]);
+  const exactUsCount = useMemo(() => specialtyProducts.filter((product) => productDiligence(product, catalog)?.disclosure === "Exact U.S.").length, [specialtyProducts, catalog]);
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return specialtyProducts.filter((product) => {
+      const diligence = productDiligence(product, catalog);
       const matchesRoute = route === "All routes" || product.route === route;
-      const haystack = [product.brand, product.ingredient, product.company, product.mechanism, product.modality].join(" ").toLowerCase();
-      return matchesRoute && (!needle || haystack.includes(needle));
+      const matchesOwnership = ownership === "All ownership" || diligence?.ownership === ownership;
+      const matchesDisclosure = disclosure === "All revenue facts" || diligence?.disclosure === disclosure;
+      const haystack = [product.brand, product.ingredient, product.company, product.mechanism, product.modality, diligence?.parent, diligence?.rightsHolder, diligence?.ticker, diligence?.latestDisplay].join(" ").toLowerCase();
+      return matchesRoute && matchesOwnership && matchesDisclosure && (!needle || haystack.includes(needle));
     }).sort((a, b) => {
       const rankA = a.specialtyRank;
       const rankB = b.specialtyRank;
       if (rankA !== null || rankB !== null) return (rankA ?? 999) - (rankB ?? 999);
       return specialtySignalScore(b) - specialtySignalScore(a) || a.brand.localeCompare(b.brand);
     });
-  }, [specialtyProducts, query, route]);
+  }, [specialtyProducts, catalog, query, route, ownership, disclosure]);
+
+  function resetResults() {
+    setVisible(48);
+  }
 
   return (
     <div className="view-stack">
       <section className="page-intro compact">
-        <div><p className="eyebrow">Specialty screen</p><h1>Specialty product database</h1><p>Search the 81 products screened for concentrated call points, differentiated delivery, or high-support models.</p></div>
+        <div><p className="eyebrow">81-asset diligence set</p><h1>Specialty product database</h1><p>Find the U.S. rights holder, ownership status and publicly reported revenue for every candidate.</p><p className="fact-standard">{exactUsCount} exact U.S. disclosures · broader figures stay labeled · no estimates</p></div>
         <div className="intro-stat"><strong>{filtered.length.toLocaleString()}</strong><span>of 81 candidates</span></div>
       </section>
       <section className="target-tools database-tools">
-        <label className="search-field"><SearchIcon /><input value={query} onChange={(event) => { setQuery(event.target.value); setVisible(48); }} placeholder="Search product, ingredient, company or mechanism" /></label>
-        <select value={route} onChange={(event) => { setRoute(event.target.value); setVisible(48); }} aria-label="Route filter">
+        <label className="search-field"><SearchIcon /><input value={query} onChange={(event) => { setQuery(event.target.value); resetResults(); }} placeholder="Search product, rights holder, parent or mechanism" /></label>
+        <select value={route} onChange={(event) => { setRoute(event.target.value); resetResults(); }} aria-label="Route filter">
           {routes.map((item) => <option key={item}>{item}</option>)}
+        </select>
+        <select value={ownership} onChange={(event) => { setOwnership(event.target.value); resetResults(); }} aria-label="Ownership filter">
+          <option>All ownership</option>
+          <option>Public parent</option>
+          <option>Private</option>
+        </select>
+        <select value={disclosure} onChange={(event) => { setDisclosure(event.target.value); resetResults(); }} aria-label="Revenue disclosure filter">
+          <option>All revenue facts</option>
+          <option>Exact U.S.</option>
+          <option>Broader disclosure</option>
+          <option>Not disclosed</option>
+          <option>Pre-revenue</option>
         </select>
       </section>
       <section className="database-list">
         {filtered.slice(0, visible).map((product) => {
           const rank = product.specialtyRank;
           const score = product.specialtyScore;
+          const diligence = productDiligence(product, catalog);
           return (
             <article className={`database-row ${rank ? "linked" : ""}`} key={product.id}>
-              <div className="database-name"><h3>{product.brand}</h3><span>{product.ingredient}</span></div>
-              <div><span className="row-label">Company</span><strong>{product.company}</strong></div>
-              <div><span className="row-label">Administration</span><strong>{product.dosageForm} · {product.route}</strong></div>
-              <div><span className="row-label">Mechanism</span><strong>{short(product.mechanism ?? "Not classified", 90)}</strong></div>
-              {rank && product.strategyAsset ? (
-                <button className="strategy-link" onClick={() => onViewTarget(product.strategyAsset!)}><b>#{rank}</b><span>{score} fit</span><ArrowIcon /></button>
-              ) : <span className="unranked">Specialty candidate</span>}
+              <div className="database-name"><div>{rank ? <b>#{rank}</b> : <b>Screened</b>}<h3>{product.brand}</h3></div><span>{product.ingredient}</span></div>
+              <div className="database-owner"><span className="row-label">U.S. rights holder</span><strong>{diligence?.rightsHolder ?? product.company}</strong><small>{diligence?.ownership}{diligence?.ticker ? ` · ${diligence.ticker}` : ""}</small></div>
+              <div className="database-revenue"><span className="row-label">Latest reported revenue</span><strong>{diligence?.latestDisplay ?? "Research pending"}</strong><small>{diligence?.latestPeriod}</small></div>
+              <div className="database-product"><span className="row-label">Product</span><strong>{product.route} · {product.modality}</strong><small>{short(product.mechanism ?? "Not classified", 74)}</small></div>
+              <div className="database-row-action">
+                {diligence && <span className={`disclosure-badge ${diligence.disclosure.toLowerCase().replaceAll(" ", "-")}`}>{diligence.disclosure}</span>}
+                <button className="strategy-link" onClick={() => setSelectedProduct(product)}><span>Review facts{rank && score ? ` · ${score} fit` : ""}</span><ArrowIcon /></button>
+              </div>
             </article>
           );
         })}
+        {!filtered.length && <div className="empty-state"><h2>No matching candidates</h2><p>Broaden the filters or search.</p></div>}
       </section>
       {visible < filtered.length && <button className="button load-more" onClick={() => setVisible((count) => count + 48)}>Show 48 more</button>}
+      {selectedProduct && productDiligence(selectedProduct, catalog) && (
+        <CandidateDrawer
+          product={selectedProduct}
+          diligence={productDiligence(selectedProduct, catalog)!}
+          onClose={() => setSelectedProduct(null)}
+          onViewTarget={selectedProduct.specialtyRank && selectedProduct.strategyAsset ? () => onViewTarget(selectedProduct.strategyAsset!) : undefined}
+        />
+      )}
     </div>
   );
 }
@@ -844,6 +884,40 @@ function RevenueHistory({ diligence }: { diligence: AssetDiligence }) {
         </ol>
       </div>
     </section>
+  );
+}
+
+function CandidateDrawer({ product, diligence, onClose, onViewTarget }: { product: Product; diligence: AssetDiligence; onClose: () => void; onViewTarget?: () => void }) {
+  useEffect(() => {
+    const close = (event: KeyboardEvent) => event.key === "Escape" && onClose();
+    window.addEventListener("keydown", close);
+    document.body.classList.add("overlay-open");
+    return () => {
+      window.removeEventListener("keydown", close);
+      document.body.classList.remove("overlay-open");
+    };
+  }, [onClose]);
+
+  return (
+    <div className="overlay" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+      <aside className="detail-drawer candidate-drawer" role="dialog" aria-modal="true" aria-label={`${product.brand} ownership and revenue facts`}>
+        <div className="drawer-header">
+          <div><p className="eyebrow">Specialty candidate</p><h2>{product.brand}</h2><span>{product.ingredient}</span></div>
+          <button className="close-button" onClick={onClose} aria-label="Close"><CloseIcon /></button>
+        </div>
+        <div className="drawer-summary">
+          <div><span>Reported revenue</span><strong>{diligence.latestDisplay}</strong><small>{diligence.latestPeriod}</small></div>
+          <div><span>U.S. rights holder</span><a href={diligence.companyUrl} target="_blank" rel="noreferrer">{diligence.rightsHolder} ↗</a><small>{diligence.ownership}{diligence.ticker ? ` · ${diligence.ticker}` : ""}</small></div>
+        </div>
+        <div className="drawer-body">
+          <DetailRow label="Ownership"><b>{diligence.ownership}</b>{diligence.ticker ? ` · ${diligence.ticker}` : ""}<br />Parent: {diligence.parent}</DetailRow>
+          <DetailRow label="Commercial status">{diligence.launch}<br />{diligence.indicationSplit}</DetailRow>
+          <DetailRow label="Product"><span className="inline-chips"><b>{product.modality}</b><b>{product.route}</b><b>{product.dosageForm}</b></span><br />{product.mechanism}</DetailRow>
+          <RevenueHistory diligence={diligence} />
+        </div>
+        {onViewTarget && <div className="drawer-actions"><button className="button primary" onClick={onViewTarget}>Open ranked target brief</button></div>}
+      </aside>
+    </div>
   );
 }
 

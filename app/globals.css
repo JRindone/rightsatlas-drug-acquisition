@@ -1358,7 +1358,21 @@ button.funnel-node {
 
 .database-name h3 {
   font-size: 18px;
-  margin-bottom: 3px;
+  margin: 0;
+}
+
+.database-name > div {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.database-name > div > b {
+  color: var(--accent);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .database-name span {
@@ -1370,6 +1384,34 @@ button.funnel-node {
   display: block;
   font-size: 12px;
   line-height: 1.35;
+}
+
+.database-row small {
+  color: var(--faint);
+  display: block;
+  font-size: 9px;
+  line-height: 1.45;
+  margin-top: 4px;
+}
+
+.database-revenue strong {
+  color: var(--accent);
+  font-size: 15px !important;
+}
+
+.database-row-action {
+  align-items: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.database-row-action .disclosure-badge {
+  align-self: flex-start;
+}
+
+.database-row-action .strategy-link {
+  width: 100%;
 }
 
 .strategy-link {
@@ -2487,7 +2529,11 @@ button.funnel-node {
   }
 
   .database-tools {
-    grid-template-columns: minmax(0, 1fr) minmax(240px, 0.35fr);
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .database-tools .search-field {
+    grid-column: 1 / -1;
   }
 
   .deal-summary {
@@ -2552,12 +2598,11 @@ button.funnel-node {
     grid-template-columns: 1.2fr 1fr 1fr;
   }
 
-  .database-row > div:nth-of-type(4) {
+  .database-product {
     grid-column: 1 / 3;
   }
 
-  .strategy-link,
-  .unranked {
+  .database-row-action {
     align-self: end;
     grid-column: 3;
   }
@@ -2684,9 +2729,16 @@ button.funnel-node {
     min-height: 92px;
   }
 
-  .database-row > div:nth-of-type(4),
-  .strategy-link,
-  .unranked {
+  .database-product,
+  .database-row-action {
+    grid-column: auto;
+  }
+
+  .database-tools {
+    grid-template-columns: minmax(300px, 1fr) repeat(3, minmax(150px, 0.32fr));
+  }
+
+  .database-tools .search-field {
     grid-column: auto;
   }
 
